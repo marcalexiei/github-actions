@@ -1,0 +1,46 @@
+name: Setup GitHub App Bot User
+description: |
+  Configures a GitHub App bot user for authentication and interactions.
+  This action:
+  - Creates an installation access token for the GitHub App
+  - Retrieves the bot user ID
+  - Provides bot credentials (token, name, email, ID) as outputs
+  @see https://github.com/actions/create-github-app-token?tab=readme-ov-file#create-a-git-committer-string-for-an-app-installation
+
+inputs:
+  app-id:
+    description: "App ID"
+  private-key:
+    description: "App private key"
+
+outputs:
+  token:
+    description: "The generated GitHub App installation token"
+    value: ${{ steps.app-token.outputs.token }}
+  bot-name:
+    description: "The GitHub App bot username"
+    value: ${{ steps.app-token.outputs.app-slug }}[bot]
+  bot-email:
+    description: "The GitHub App bot email"
+    value: ${{ steps.app-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com
+  bot-id:
+    description: "The GitHub App user ID"
+    value: ${{ steps.app-user-id.outputs.user-id }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Create access token for GitHub App
+      uses: actions/create-github-app-token@v2
+      id: app-token
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+
+    - name: Get GitHub App User ID
+      shell: sh
+      id: app-user-id
+      run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
