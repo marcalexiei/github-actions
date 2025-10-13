@@ -23,3 +23,14 @@ Usage example:
     with:
       node-version: ${{ matrix.node }}
   ```
+
+### `setup-github-app-user-bot`
+
+```yml
+- name: Setup release helper
+  id: release-helper
+  uses: marcalexiei/github-actions/.github/actions/setup-github-app-user-bot@main      
+  with:
+    app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
+    private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
+```
