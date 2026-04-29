@@ -1,3 +1,7 @@
 import { oxfmtConfig } from '@marcalexiei/oxfmt-config';
+import { defineConfig } from 'oxfmt';
 
-export default oxfmtConfig;
+export default defineConfig({
+  ...oxfmtConfig,
+  ignorePatterns: ['**/CHANGELOG.md'],
+});
