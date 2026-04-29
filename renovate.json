@@ -1,5 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "schedule": ["on the first day of the month"]
+  "schedule": ["on the first day of the month"],
+  "packageRules": [
+    {
+      "matchFileNames": [".github/actions/**"],
+      "semanticCommitType": "feat"
+    }
+  ]
 }
