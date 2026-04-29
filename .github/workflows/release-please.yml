@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  release:
+    name: Release
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup release helper
+        id: release-helper
+        uses: ./.github/actions/setup-github-app-user-bot
+        with:
+          app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
+          private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
+
+      - name: Configure git user for GitHub App
+        run: |
+          git config --global user.name '${{ steps.release-helper.outputs.bot-name }}'
+          git config --global user.email '${{ steps.release-helper.outputs.bot-email }}'
+
+      - name: Release please
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          token: ${{ steps.release-helper.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: release-please-manifest.json
