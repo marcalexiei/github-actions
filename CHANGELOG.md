@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/marcalexiei/github-actions/compare/v1.1.0...v1.2.0) (2026-05-04)
+
+
+### Features
+
+* **deps:** update pnpm/action-setup action to v6.0.4 ([#20](https://github.com/marcalexiei/github-actions/issues/20)) ([23d5b6a](https://github.com/marcalexiei/github-actions/commit/23d5b6a60ac5e9651c671bf47c771d2e1ce63a83))
+* **deps:** update pnpm/action-setup action to v6.0.5 ([#24](https://github.com/marcalexiei/github-actions/issues/24)) ([d572454](https://github.com/marcalexiei/github-actions/commit/d572454b72c2c230ea03f3ef29f644160ae42f8f))
+
 ## [1.1.0](https://github.com/marcalexiei/github-actions/compare/v1.0.0...v1.1.0) (2026-04-29)
 
 
