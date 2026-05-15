@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/marcalexiei/github-actions/compare/v1.2.0...v1.3.0) (2026-05-15)
+
+
+### Features
+
+* add zizmor checks and apply fixes ([#25](https://github.com/marcalexiei/github-actions/issues/25)) ([c7e3087](https://github.com/marcalexiei/github-actions/commit/c7e308705c24aea343da5f8fa577041476afc5da))
+
+
+### Bug Fixes
+
+* resolve all zizmor reports ([#28](https://github.com/marcalexiei/github-actions/issues/28)) ([fa132a7](https://github.com/marcalexiei/github-actions/commit/fa132a7eac36a2219bc3416b0f4c88147572ee34))
+
 ## [1.2.0](https://github.com/marcalexiei/github-actions/compare/v1.1.0...v1.2.0) (2026-05-04)
 
 
