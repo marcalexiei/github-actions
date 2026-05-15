@@ -7,17 +7,22 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Release
+    environment: release
 
     runs-on: ubuntu-latest
 
     timeout-minutes: 5
 
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # required to create releases and tags
+      pull-requests: write # required to create and update release PRs
 
     steps:
       - name: Checkout

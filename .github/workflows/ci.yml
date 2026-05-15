@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      security-events: write
-      contents: read
-      actions: read
+      security-events: write # required to upload SARIF results to GitHub Code Scanning
+      contents: read # required to check out the repository
+      actions: read # required by zizmor to read workflow runs
 
     steps:
       - name: Checkout

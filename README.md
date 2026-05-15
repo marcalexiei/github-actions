@@ -35,6 +35,10 @@ Usage example:
 
 ### `setup-github-app-user-bot`
 
+> [!IMPORTANT]
+> Grant the GitHub App only the minimum permissions required for your use case.
+> Overly broad permissions increase the blast radius if the token is compromised.
+
 ```yml
 - name: Setup release helper
   id: release-helper
