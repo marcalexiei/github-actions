@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/marcalexiei/github-actions/compare/v1.3.0...v1.3.1) (2026-05-22)
+
+
+### Bug Fixes
+
+* **setup-node-and-pnpm:** use `standalone` on `setup-pnpm` to avoid error during self-installer due to a mismatch in node-version ([8a3cc4e](https://github.com/marcalexiei/github-actions/commit/8a3cc4e94038d1a08d27b37cfd2299fefb23adf8))
+
 ## [1.3.0](https://github.com/marcalexiei/github-actions/compare/v1.2.0...v1.3.0) (2026-05-15)
 
 
