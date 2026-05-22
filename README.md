@@ -33,6 +33,8 @@ Usage example:
       node-version: ${{ matrix.node }}
   ```
 
+pnpm version should be set in the `packageManager` field inside `package.json`.
+
 ### `setup-github-app-user-bot`
 
 > [!IMPORTANT]

@@ -13,8 +13,34 @@ runs:
   using: composite
 
   steps:
+    - name: Validate packageManager in package.json
+      shell: bash
+      run: |
+        if [ ! -f package.json ]; then
+          echo "::error::package.json was not found in the repository root. Run actions/checkout before this action."
+          exit 1
+        fi
+        pm=$(jq -r '.packageManager // ""' package.json)
+        if [ -z "$pm" ]; then
+          echo "::error::The 'packageManager' field is missing from package.json. Set it to e.g. \"pnpm@10.33.4\"."
+          exit 1
+        fi
+        case "$pm" in
+          pnpm@*) ;;
+          *)
+            echo "::error::The 'packageManager' field in package.json is not pnpm (got: $pm)."
+            exit 1
+            ;;
+        esac
+
+    # standalone: true makes pnpm/action-setup install @pnpm/exe (a Node-bundled
+    # binary), so the bootstrap pnpm runs regardless of the runner's system Node.
+    # With no `version` input, the action then reads `packageManager` from
+    # package.json and pnpm auto-switches to that version at install time.
     - name: Install pnpm
       uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+      with:
+        standalone: true
 
     - name: Setup Node.js (via input)
       if: ${{ inputs.node-version }}
