@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/marcalexiei/github-actions/compare/v1.4.0...v2.0.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* action paths no longer include `.github/actions/`. Update `uses:` references to `marcalexiei/github-actions/<action-name>@<ref>`.
+
+### Features
+
+* **deps:** update actions/create-github-app-token action to v3.2.0 ([#38](https://github.com/marcalexiei/github-actions/issues/38)) ([19e8ae1](https://github.com/marcalexiei/github-actions/commit/19e8ae1d9c7319e7fb87e30949a6a1375bf1cc0d))
+* move actions to repo root to shorten usage path ([#41](https://github.com/marcalexiei/github-actions/issues/41)) ([531846a](https://github.com/marcalexiei/github-actions/commit/531846a5636dd96f628befc80ba27cd247ed2254))
+
 ## [1.4.0](https://github.com/marcalexiei/github-actions/compare/v1.3.1...v1.4.0) (2026-06-01)
 
 
