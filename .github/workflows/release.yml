@@ -32,7 +32,7 @@ jobs:
 
       - name: Setup release helper
         id: release-helper
-        uses: ./.github/actions/setup-github-app-user-bot
+        uses: ./setup-github-app-user-bot
         with:
           app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
           private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}

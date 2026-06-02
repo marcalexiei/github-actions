@@ -5,7 +5,7 @@
   "minimumReleaseAge": "1 day",
   "packageRules": [
     {
-      "matchFileNames": [".github/actions/**"],
+      "matchFileNames": ["setup-node-and-pnpm/**", "setup-github-app-user-bot/**"],
       "semanticCommitType": "feat"
     }
   ]

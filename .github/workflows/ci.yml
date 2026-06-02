@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Dependencies
-        uses: ./.github/actions/setup-node-and-pnpm
+        uses: ./setup-node-and-pnpm
 
       - name: Format
         run: pnpm run format:check

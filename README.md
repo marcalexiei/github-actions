@@ -6,7 +6,7 @@ Shared Github Actions utilities across marcalexiei account
 > For security, pin actions to a full commit SHA rather than a mutable ref like `@main`:
 >
 > ```yml
-> uses: marcalexiei/github-actions/.github/actions/setup-node-and-pnpm@<commit-sha> # <version>
+> uses: marcalexiei/github-actions/setup-node-and-pnpm@<commit-sha> # <version>
 > ```
 >
 > You can find the latest commit SHA on the [release page](https://github.com/marcalexiei/github-actions/releases).
@@ -21,14 +21,14 @@ Usage example:
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/.github/actions/setup-node-and-pnpm@main
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@main
   ```
 
 - With Explicit Node.js version
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/.github/actions/setup-node-and-pnpm@main
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@main
     with:
       node-version: ${{ matrix.node }}
   ```
@@ -44,7 +44,7 @@ pnpm version should be set in the `packageManager` field inside `package.json`.
 ```yml
 - name: Setup release helper
   id: release-helper
-  uses: marcalexiei/github-actions/.github/actions/setup-github-app-user-bot@main
+  uses: marcalexiei/github-actions/setup-github-app-user-bot@main
   with:
     app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
     private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
