@@ -9,18 +9,18 @@ importers:
   .:
     devDependencies:
       '@marcalexiei/oxfmt-config':
-        specifier: 1.1.0
-        version: 1.1.0(oxfmt@0.54.0)
+        specifier: 1.2.1
+        version: 1.2.1(oxfmt@0.54.0)
       oxfmt:
         specifier: 0.54.0
         version: 0.54.0
 
 packages:
 
-  '@marcalexiei/oxfmt-config@1.1.0':
-    resolution: {integrity: sha512-YPizV5uOLQ72K20exXHQ/C7n/RaccHeMjcoYymD2f1NjTlwEX9d9/cO79/6qDpPs/NqOFvr7RvKh1MDePkqCfA==}
+  '@marcalexiei/oxfmt-config@1.2.1':
+    resolution: {integrity: sha512-Ok+YNmtgbAVUxsJjM8T5VyNdE5YwJie615eQB67eLyELpiSGlq+CWIexoUmnOZiclLRoGrNRBFhrKSNJ0HZbqQ==}
     peerDependencies:
-      oxfmt: '>=0.41.0 <1'
+      oxfmt: '>=0.56.0 <1'
 
   '@oxfmt/binding-android-arm-eabi@0.54.0':
     resolution: {integrity: sha512-NAtpl/SiaeU103e7/OmZw0MvUnsUUopW7hEm/ecegJg7YM0skQaA0IXEZoyTV6NUdiNPupdIUreRqUZTShbn/g==}
@@ -163,7 +163,7 @@ packages:
 
 snapshots:
 
-  '@marcalexiei/oxfmt-config@1.1.0(oxfmt@0.54.0)':
+  '@marcalexiei/oxfmt-config@1.2.1(oxfmt@0.54.0)':
     dependencies:
       oxfmt: 0.54.0
 
