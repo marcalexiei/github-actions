@@ -21,14 +21,14 @@ Usage example:
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@main
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@<commit-sha> # <version>
   ```
 
 - With Explicit Node.js version
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@main
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@<commit-sha> # <version>
     with:
       node-version: ${{ matrix.node }}
   ```
@@ -44,7 +44,7 @@ pnpm version should be set in the `packageManager` field inside `package.json`.
 ```yml
 - name: Setup release helper
   id: release-helper
-  uses: marcalexiei/github-actions/setup-github-app-user-bot@main
+  uses: marcalexiei/github-actions/setup-github-app-user-bot@<commit-sha> # <version>
   with:
     app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
     private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
