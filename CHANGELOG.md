@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/marcalexiei/github-actions/compare/v2.1.0...v2.2.0) (2026-08-01)
+
+
+### Features
+
+* **deps:** update actions/setup-node action to v7 ([#55](https://github.com/marcalexiei/github-actions/issues/55)) ([042a145](https://github.com/marcalexiei/github-actions/commit/042a1457173fad3c4a165a387ea4fbcb61f682bf))
+
 ## [2.1.0](https://github.com/marcalexiei/github-actions/compare/v2.0.0...v2.1.0) (2026-07-11)
 
 
