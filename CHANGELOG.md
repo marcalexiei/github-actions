@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/marcalexiei/github-actions/compare/v2.3.0...v2.3.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **setup-github-app-user-bot:** mark app-id and private-key as required ([#67](https://github.com/marcalexiei/github-actions/issues/67)) ([02a8648](https://github.com/marcalexiei/github-actions/commit/02a8648526b78aabc51212f1deea978986416d0f))
+
 ## [2.3.0](https://github.com/marcalexiei/github-actions/compare/v2.2.0...v2.3.0) (2026-09-10)
 
 
