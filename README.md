@@ -40,6 +40,9 @@ pnpm version should be set in the `packageManager` field inside `package.json`.
 > [!IMPORTANT]
 > Grant the GitHub App only the minimum permissions required for your use case.
 > Overly broad permissions increase the blast radius if the token is compromised.
+>
+> `owner` and `repositories` narrow the token further. Both default to the current
+> repository, so leave them unset unless the token has to reach another one.
 
 ```yml
 - name: Setup release helper

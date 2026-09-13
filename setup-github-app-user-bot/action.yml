@@ -12,6 +12,10 @@ inputs:
     description: 'App ID'
   private-key:
     description: 'App private key'
+  owner:
+    description: 'Owner whose repositories the token may reach. Defaults to the current repository owner.'
+  repositories:
+    description: 'Comma or newline separated repositories the token may reach. Defaults to the current repository.'
 
 outputs:
   token:
@@ -37,6 +41,8 @@ runs:
       with:
         client-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
+        owner: ${{ inputs.owner }}
+        repositories: ${{ inputs.repositories }}
 
     - name: Get GitHub App User ID
       shell: sh
