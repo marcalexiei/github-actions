@@ -3,13 +3,9 @@
 Shared Github Actions utilities across marcalexiei account
 
 > [!NOTE]
-> For security, pin actions to a full commit SHA rather than a mutable ref like `@main`:
->
-> ```yml
-> uses: marcalexiei/github-actions/setup-node-and-pnpm@e9655755a6dc0040e650a931ee5d958c7d7a9f22 # v2.3.1
-> ```
->
-> You can find the latest commit SHA on the [release page](https://github.com/marcalexiei/github-actions/releases).
+> For security, pin actions to a full commit SHA rather than a mutable ref like `@main`.
+> The examples below are re-pinned after every release, so their SHA points at the latest version.
+> You can also find it on the [release page](https://github.com/marcalexiei/github-actions/releases).
 
 ## Actions
 
