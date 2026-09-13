@@ -10,8 +10,10 @@ description: |
 inputs:
   app-id:
     description: 'App ID'
+    required: true
   private-key:
     description: 'App private key'
+    required: true
 
 outputs:
   token:
