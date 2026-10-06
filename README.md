@@ -13,7 +13,7 @@ Shared Github Actions utilities across marcalexiei account
 
 Usage example:
 
-- Reading node version from `.npmrc`
+- Reading node version from `.nvmrc`
 
   ```yml
   - name: Install Dependencies
@@ -30,6 +30,20 @@ Usage example:
   ```
 
 pnpm version should be set in the `packageManager` field inside `package.json`.
+
+`node_modules`, the pnpm store and the Node.js binary are cached.
+When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
+
+- `node_modules` is not cached on Windows runners, where only the pnpm store is.
+- The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`).
+- When parallel jobs share a lockfile, let one of them save the caches:
+
+  ```yml
+  - name: Install Dependencies
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@e9655755a6dc0040e650a931ee5d958c7d7a9f22 # v2.3.1
+    with:
+      save-cache: false
+  ```
 
 ### `setup-github-app-user-bot`
 

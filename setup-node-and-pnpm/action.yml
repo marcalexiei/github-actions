@@ -3,11 +3,19 @@ description: |
   This is a composite GitHub Action that:
   - Sets up pnpm package manager
   - Configures Node.js environment
-  - Installs project dependencies with caching
+  - Installs project dependencies, caching node_modules, the pnpm store and the Node.js binary
 
 inputs:
   node-version:
     description: 'Explicit node version. Otherwise fallback reading `.nvmrc`'
+  save-cache:
+    description: 'Save the caches after a miss. Set to `false` in all but one of the parallel jobs sharing a lockfile, so they do not race for the same keys'
+    default: 'true'
+
+outputs:
+  cache-hit:
+    description: 'Whether node_modules was restored from the cache (install skipped)'
+    value: ${{ steps.node-modules.outputs.cache-hit == 'true' }}
 
 runs:
   using: composite
@@ -42,12 +50,49 @@ runs:
       with:
         standalone: true
 
+    - name: Resolve cache keys and paths
+      id: resolve
+      shell: bash
+      env:
+        NODE_VERSION: ${{ inputs.node-version }}
+      run: |
+        version="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
+        version="${version#v}"
+        # A range would pin the cached binary to whatever patch was saved first.
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && exact="$version" || exact=''
+        {
+          echo "node-version=$version"
+          echo "node-exact=$exact"
+          echo "pnpm-version=$(jq -r '.packageManager | split("+")[0]' package.json)"
+          echo 'node-modules<<EOF'
+          pnpm ls -r --depth -1 --json | jq -r '.[].path + "/node_modules"'
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
+
+    # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
+    - name: Restore node_modules
+      id: node-modules
+      if: runner.os != 'Windows'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.resolve.outputs.node-modules }}
+        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.resolve.outputs.pnpm-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+
+    # setup-node downloads every version the runner image doesn't ship.
+    - name: Restore Node.js
+      id: node-binary
+      if: steps.resolve.outputs.node-exact != ''
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
+        key: ${{ runner.os }}-${{ runner.arch }}-node-binary-${{ steps.resolve.outputs.node-exact }}
+
     - name: Setup Node.js (via input)
       if: ${{ inputs.node-version }}
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
 
     - name: Setup Node.js (via .nvmrc)
@@ -55,9 +100,49 @@ runs:
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version-file: '.nvmrc'
-        cache: 'pnpm'
+        package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
 
-    - name: Install Dependencies
+    - name: Save Node.js
+      if: steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
+        key: ${{ steps.node-binary.outputs.cache-primary-key }}
+
+    - name: Resolve pnpm store path
+      id: pnpm-store
+      if: steps.node-modules.outputs.cache-hit != 'true'
       shell: bash
-      run: pnpm install --frozen-lockfile
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    # The prefix fallback keeps most tarballs after a lockfile change.
+    - name: Restore pnpm store
+      id: pnpm-store-cache
+      if: steps.node-modules.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+
+    - name: Install Dependencies
+      if: steps.node-modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile --prefer-offline
+
+    # Before any later step writes into node_modules (e.g. `.vite`).
+    - name: Save node_modules
+      if: runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.resolve.outputs.node-modules }}
+        key: ${{ steps.node-modules.outputs.cache-primary-key }}
+
+    - name: Save pnpm store
+      if: steps.node-modules.outputs.cache-hit != 'true' && steps.pnpm-store-cache.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ steps.pnpm-store-cache.outputs.cache-primary-key }}
