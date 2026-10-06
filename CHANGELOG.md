@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/marcalexiei/github-actions/compare/v2.3.1...v2.4.0) (2026-10-06)
+
+
+### Features
+
+* **setup-node-and-pnpm:** cache node_modules, the pnpm store and the Node.js binary ([#78](https://github.com/marcalexiei/github-actions/issues/78)) ([020020c](https://github.com/marcalexiei/github-actions/commit/020020c336cb9ab3d5315fc1b51cb8e996199484))
+
 ## [2.3.1](https://github.com/marcalexiei/github-actions/compare/v2.3.0...v2.3.1) (2026-09-13)
 
 
