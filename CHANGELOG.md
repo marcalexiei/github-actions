@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/marcalexiei/github-actions/compare/v2.4.0...v2.4.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **setup-node-and-pnpm:** drop the pnpm store cache and save caches only on the default branch ([#83](https://github.com/marcalexiei/github-actions/issues/83)) ([3f31459](https://github.com/marcalexiei/github-actions/commit/3f31459ed0d0268207fc515b42ce63d17d68a914))
+
 ## [2.4.0](https://github.com/marcalexiei/github-actions/compare/v2.3.1...v2.4.0) (2026-10-06)
 
 
