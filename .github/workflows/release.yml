@@ -11,12 +11,16 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.ref }}'
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release:
     name: Release
     environment: release
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     timeout-minutes: 5
 
@@ -39,8 +43,8 @@ jobs:
 
       - name: Configure git user for GitHub App
         run: |
-          git config --global user.name '${BOT_NAME}'
-          git config --global user.email '${BOT_EMAIL}'
+          git config --global user.name "${BOT_NAME}"
+          git config --global user.email "${BOT_EMAIL}"
         env:
           BOT_NAME: ${{ steps.release-helper.outputs.bot-name }}
           BOT_EMAIL: ${{ steps.release-helper.outputs.bot-email }}

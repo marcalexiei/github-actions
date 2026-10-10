@@ -62,8 +62,8 @@ When `node_modules` is restored, `pnpm install` is skipped (and so are the insta
 
 - name: Configure git user for GitHub App
   run: |
-    git config --global user.name '${BOT_NAME}'
-    git config --global user.email '${BOT_EMAIL}'
+    git config --global user.name "${BOT_NAME}"
+    git config --global user.email "${BOT_EMAIL}"
   env:
     BOT_NAME: ${{ steps.release-helper.outputs.bot-name }}
     BOT_EMAIL: ${{ steps.release-helper.outputs.bot-email }}
