@@ -35,7 +35,7 @@ pnpm version should be set in the `packageManager` field inside `package.json`.
 When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
 
 - `node_modules` is not cached on Windows runners.
-- The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`).
+- The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`) that the runner image does not already ship.
 - Caches are saved only on the default branch, the one place every pull request can read them from.
 - When parallel jobs share a lockfile, let one of them save the caches:
 

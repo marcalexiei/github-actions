@@ -62,6 +62,8 @@ runs:
         version="${version#v}"
         # A range would pin the cached binary to whatever patch was saved first.
         [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && exact="$version" || exact=''
+        # The runner image already ships it, and finds it faster than a cache restores it.
+        [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
         {
           echo "node-version=$version"
           echo "node-exact=$exact"
