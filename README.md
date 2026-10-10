@@ -17,14 +17,14 @@ Usage example:
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@9ded13ab164dfe9b64cc973d440b629ec1940d8d # v2.4.0
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@ce1673b7269a1dd87e174de9c40a71eb912edd9f # v2.4.1
   ```
 
 - With Explicit Node.js version
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@9ded13ab164dfe9b64cc973d440b629ec1940d8d # v2.4.0
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@ce1673b7269a1dd87e174de9c40a71eb912edd9f # v2.4.1
     with:
       node-version: ${{ matrix.node }}
   ```
@@ -41,7 +41,7 @@ When `node_modules` is restored, `pnpm install` is skipped (and so are the insta
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@9ded13ab164dfe9b64cc973d440b629ec1940d8d # v2.4.0
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@ce1673b7269a1dd87e174de9c40a71eb912edd9f # v2.4.1
     with:
       save-cache: false
   ```
@@ -55,7 +55,7 @@ When `node_modules` is restored, `pnpm install` is skipped (and so are the insta
 ```yml
 - name: Setup release helper
   id: release-helper
-  uses: marcalexiei/github-actions/setup-github-app-user-bot@9ded13ab164dfe9b64cc973d440b629ec1940d8d # v2.4.0
+  uses: marcalexiei/github-actions/setup-github-app-user-bot@ce1673b7269a1dd87e174de9c40a71eb912edd9f # v2.4.1
   with:
     app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
     private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
