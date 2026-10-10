@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/marcalexiei/github-actions/compare/v2.4.1...v2.4.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **setup-node-and-pnpm:** skip the Node.js binary cache when the runner already ships the version ([#86](https://github.com/marcalexiei/github-actions/issues/86)) ([c33f70a](https://github.com/marcalexiei/github-actions/commit/c33f70adf6d72ee1dc3a7ba59d82c28f06fb12c3))
+
 ## [2.4.1](https://github.com/marcalexiei/github-actions/compare/v2.4.0...v2.4.1) (2026-10-10)
 
 
