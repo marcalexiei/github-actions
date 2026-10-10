@@ -75,7 +75,7 @@ runs:
     # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
     - name: Restore node_modules
       id: node-modules
-      if: runner.os != 'Windows'
+      if: ${{ runner.os != 'Windows' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
@@ -84,7 +84,7 @@ runs:
     # setup-node downloads every version the runner image doesn't ship.
     - name: Restore Node.js
       id: node-binary
-      if: steps.resolve.outputs.node-exact != ''
+      if: ${{ steps.resolve.outputs.node-exact != '' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
@@ -107,20 +107,20 @@ runs:
         registry-url: 'https://registry.npmjs.org'
 
     - name: Save Node.js
-      if: steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true'
+      if: ${{ steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
         key: ${{ steps.node-binary.outputs.cache-primary-key }}
 
     - name: Install Dependencies
-      if: steps.node-modules.outputs.cache-hit != 'true'
+      if: ${{ steps.node-modules.outputs.cache-hit != 'true' }}
       shell: bash
       run: pnpm install --frozen-lockfile
 
     # Before any later step writes into node_modules (e.g. `.vite`).
     - name: Save node_modules
-      if: runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true'
+      if: ${{ runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
