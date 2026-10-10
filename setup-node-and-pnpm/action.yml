@@ -3,13 +3,13 @@ description: |
   This is a composite GitHub Action that:
   - Sets up pnpm package manager
   - Configures Node.js environment
-  - Installs project dependencies, caching node_modules, the pnpm store and the Node.js binary
+  - Installs project dependencies, caching node_modules and the Node.js binary
 
 inputs:
   node-version:
     description: 'Explicit node version. Otherwise fallback reading `.nvmrc`'
   save-cache:
-    description: 'Save the caches after a miss. Set to `false` in all but one of the parallel jobs sharing a lockfile, so they do not race for the same keys'
+    description: 'Save the caches after a miss, which only ever happens on the default branch. Set to `false` in all but one of the parallel jobs sharing a lockfile, so they do not race for the same keys'
     default: 'true'
 
 outputs:
@@ -55,6 +55,8 @@ runs:
       shell: bash
       env:
         NODE_VERSION: ${{ inputs.node-version }}
+        # Pull requests can read the default branch's caches, but not each other's.
+        SAVE: ${{ inputs.save-cache == 'true' && github.ref_name == github.event.repository.default_branch }}
       run: |
         version="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
         version="${version#v}"
@@ -63,6 +65,7 @@ runs:
         {
           echo "node-version=$version"
           echo "node-exact=$exact"
+          echo "save=$SAVE"
           echo "pnpm-version=$(jq -r '.packageManager | split("+")[0]' package.json)"
           echo 'node-modules<<EOF'
           pnpm ls -r --depth -1 --json | jq -r '.[].path + "/node_modules"'
@@ -104,45 +107,21 @@ runs:
         registry-url: 'https://registry.npmjs.org'
 
     - name: Save Node.js
-      if: steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      if: steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
         key: ${{ steps.node-binary.outputs.cache-primary-key }}
 
-    - name: Resolve pnpm store path
-      id: pnpm-store
-      if: steps.node-modules.outputs.cache-hit != 'true'
-      shell: bash
-      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-    # The prefix fallback keeps most tarballs after a lockfile change.
-    - name: Restore pnpm store
-      id: pnpm-store-cache
-      if: steps.node-modules.outputs.cache-hit != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-
     - name: Install Dependencies
       if: steps.node-modules.outputs.cache-hit != 'true'
       shell: bash
-      run: pnpm install --frozen-lockfile --prefer-offline
+      run: pnpm install --frozen-lockfile
 
     # Before any later step writes into node_modules (e.g. `.vite`).
     - name: Save node_modules
-      if: runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      if: runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
         key: ${{ steps.node-modules.outputs.cache-primary-key }}
-
-    - name: Save pnpm store
-      if: steps.node-modules.outputs.cache-hit != 'true' && steps.pnpm-store-cache.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ steps.pnpm-store-cache.outputs.cache-primary-key }}

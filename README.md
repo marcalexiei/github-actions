@@ -31,11 +31,12 @@ Usage example:
 
 pnpm version should be set in the `packageManager` field inside `package.json`.
 
-`node_modules`, the pnpm store and the Node.js binary are cached.
+`node_modules` and the Node.js binary are cached.
 When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
 
-- `node_modules` is not cached on Windows runners, where only the pnpm store is.
+- `node_modules` is not cached on Windows runners.
 - The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`).
+- Caches are saved only on the default branch, the one place every pull request can read them from.
 - When parallel jobs share a lockfile, let one of them save the caches:
 
   ```yml
