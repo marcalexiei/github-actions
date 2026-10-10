@@ -16,6 +16,11 @@ on:
 
 permissions: {}
 
+# Two releases racing could leave the README pinned to the older one.
+concurrency:
+  group: '${{ github.workflow }}'
+  cancel-in-progress: false
+
 env:
   TAG: ${{ inputs.target || github.event.release.tag_name }}
 
