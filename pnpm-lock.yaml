@@ -167,16 +167,16 @@ importers:
   .:
     devDependencies:
       '@marcalexiei/oxfmt-config':
-        specifier: 2.0.0
-        version: 2.0.0(oxfmt@0.72.0)
+        specifier: 2.0.1
+        version: 2.0.1(oxfmt@0.72.0)
       oxfmt:
         specifier: 0.72.0
         version: 0.72.0
 
 packages:
 
-  '@marcalexiei/oxfmt-config@2.0.0':
-    resolution: {integrity: sha512-gOB42bvYEr+GLFfUYQB4lhEjAysKqc36+AesyNFazBB7hlz02Tj3u0nHWrP9gedEisQ+zJJ1fO+MZw3ZmB8exA==}
+  '@marcalexiei/oxfmt-config@2.0.1':
+    resolution: {integrity: sha512-narmisZb3NcW+q21bU0pfEq8j0mPOS55dZxRv3AchGfpm3tjdszzLsbi5fnbhoThHchV5O1tIUhuW51CmV5fZA==}
     peerDependencies:
       oxfmt: '>=0.65.0 <1'
 
@@ -321,7 +321,7 @@ packages:
 
 snapshots:
 
-  '@marcalexiei/oxfmt-config@2.0.0(oxfmt@0.72.0)':
+  '@marcalexiei/oxfmt-config@2.0.1(oxfmt@0.72.0)':
     dependencies:
       oxfmt: 0.72.0
 
