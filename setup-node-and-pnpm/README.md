@@ -6,14 +6,14 @@ Usage example:
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@4a51d6dfcaac0c263c6f2efd97249eafe0076721 # v2.5.0
   ```
 
 - With Explicit Node.js version
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@4a51d6dfcaac0c263c6f2efd97249eafe0076721 # v2.5.0
     with:
       node-version: ${{ matrix.node }}
   ```
@@ -30,7 +30,7 @@ When `node_modules` is restored, `pnpm install` is skipped (and so are the insta
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@4a51d6dfcaac0c263c6f2efd97249eafe0076721 # v2.5.0
     with:
       save-cache: false
   ```
