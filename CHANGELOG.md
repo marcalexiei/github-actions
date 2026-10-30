@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/marcalexiei/github-actions/compare/v2.4.2...v2.5.0) (2026-10-30)
+
+
+### Features
+
+* add check-needs, a gate that counts each matrix leg ([#92](https://github.com/marcalexiei/github-actions/issues/92)) ([dd54006](https://github.com/marcalexiei/github-actions/commit/dd54006b56b00c8e7e37efbf58870c32280df21f))
+* add pin-readme-version, which pins README examples to a release's commit ([#96](https://github.com/marcalexiei/github-actions/issues/96)) ([0fbf6e1](https://github.com/marcalexiei/github-actions/commit/0fbf6e1b7ab86f697ee931d24ec45e4ed88459a7))
+
 ## [2.4.2](https://github.com/marcalexiei/github-actions/compare/v2.4.1...v2.4.2) (2026-10-10)
 
 
