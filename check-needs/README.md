@@ -23,11 +23,14 @@ ci-ok:
 ```
 
 Why not just check `needs.*.result`?
-When GitHub cannot find a runner for a matrix leg, it cancels that leg before it starts, yet still reports the whole matrix as `success` in `needs`.
+When GitHub cannot find a runner for a matrix leg, it cancels that leg before it starts, yet still reports the whole matrix as `success` in `needs` ([reported to GitHub](https://github.com/orgs/community/discussions/211624)).
 A gate reading only `needs` then goes green with a leg that never ran.
 This action also reads the workflow file and the run's jobs through the API, and fails on any needed job, matrix legs included, that did not succeed.
 
 - Jobs outside `needs` are never judged.
 - A needed job that matches no job in the run fails the gate.
-- A job re-run with "Re-run failed jobs" counts by its latest attempt.
+- A re-run judges the jobs of its own attempt, so "Re-run failed jobs" can clear a failed gate.
+- A job that matches no job in the workflow file fails the gate, rather than go unchecked.
+- A job a needed reusable workflow skips passes, as it does in `needs`.
+- The gate must sit in the workflow file itself, not in a reusable workflow it calls.
 - It needs `yq` and `jq`, which GitHub's Ubuntu runners ship, and no checkout.

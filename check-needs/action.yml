@@ -51,7 +51,7 @@ runs:
 
         report="$(
           gh api --paginate --slurp \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=all&per_page=100" \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
             | jq -f "${GITHUB_ACTION_PATH}/check.jq" --slurpfile workflow "${workflow}"
         )"
         jq -r '.judged[] | "\(.name): \(.conclusion)"' <<< "${report}"

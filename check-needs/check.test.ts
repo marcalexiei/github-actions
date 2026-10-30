@@ -13,7 +13,6 @@ interface Report {
 interface RunJob {
   name: string;
   conclusion: string | null;
-  run_attempt?: number;
   status?: string;
 }
 
@@ -29,7 +28,7 @@ function check(
 ): { judged: Array<string>; errors: Array<string> } {
   const workflow = path.join(dir, 'workflow.json');
   writeFileSync(workflow, JSON.stringify(workflowJobs));
-  const pages = [{ jobs: runJobs.map((job) => ({ run_attempt: 1, ...job })) }];
+  const pages = [{ jobs: runJobs }];
   const result = spawnSync(
     'jq',
     ['-c', '-f', path.join(import.meta.dirname, 'check.jq'), '--slurpfile', 'workflow', workflow],
@@ -85,18 +84,6 @@ test('passes when every leg succeeded', () => {
     'Build and test 26 on macos-26: success',
     'Docs site: success',
   ]);
-  assert.deepEqual(errors, []);
-});
-
-test('judges a job by its latest attempt', () => {
-  const { errors } = check(
-    workflow,
-    [
-      { name: 'Build and test 26 on macos-26', conclusion: 'cancelled', run_attempt: 1 },
-      { name: 'Build and test 26 on macos-26', conclusion: 'success', run_attempt: 2 },
-    ],
-    ['build-and-test'],
-  );
   assert.deepEqual(errors, []);
 });
 
@@ -169,7 +156,7 @@ test('matches regex metacharacters in a name literally', () => {
     ['build'],
   );
   assert.deepEqual(judged, ['Build [x] (web) +1: success']);
-  assert.deepEqual(errors, []);
+  assert.deepEqual(errors, ['Build x (web) 1 matches no job in the workflow file']);
 });
 
 test('matches an expression containing braces', () => {
@@ -191,5 +178,42 @@ test('gives a run job to the most literal name, so a templated one never claims 
     ['any'],
   );
   assert.deepEqual(judged, ['alpha: success']);
+  assert.deepEqual(errors, []);
+});
+
+test('matches a name whose expression came out empty, which GitHub trims', () => {
+  const { judged, errors } = check(
+    { ios: { name: "iOS ${{ matrix.ft && '(free-threading)' || '' }}" } },
+    [
+      { name: 'iOS (free-threading)', conclusion: 'success' },
+      { name: 'iOS', conclusion: 'cancelled' },
+    ],
+    ['ios'],
+  );
+  assert.deepEqual(judged, ['iOS (free-threading): success', 'iOS: cancelled']);
+  assert.deepEqual(errors, ['iOS: cancelled']);
+});
+
+test('fails closed on a run job no name in the workflow file claims', () => {
+  const { errors } = check(
+    workflow,
+    [
+      { name: 'Docs site', conclusion: 'success' },
+      { name: 'Something else', conclusion: 'success' },
+    ],
+    ['docs'],
+  );
+  assert.deepEqual(errors, ['Something else matches no job in the workflow file']);
+});
+
+test('passes a job that a needed reusable workflow skipped', () => {
+  const { errors } = check(
+    { docs: { name: 'Docs', uses: './.github/workflows/docs.yml' } },
+    [
+      { name: 'Docs / Build', conclusion: 'success' },
+      { name: 'Docs / Check HTML IDs', conclusion: 'skipped' },
+    ],
+    ['docs'],
+  );
   assert.deepEqual(errors, []);
 });
