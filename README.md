@@ -4,89 +4,11 @@ Shared Github Actions utilities across marcalexiei account
 
 > [!NOTE]
 > For security, pin actions to a full commit SHA rather than a mutable ref like `@main`.
-> The examples below are re-pinned after every release, so their SHA points at the latest version.
+> The examples in each action's README are re-pinned after every release, so their SHA points at the latest version.
 > You can also find it on the [release page](https://github.com/marcalexiei/github-actions/releases).
 
 ## Actions
 
-### `setup-node-and-pnpm`
-
-Usage example:
-
-- Reading node version from `.nvmrc`
-
-  ```yml
-  - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
-  ```
-
-- With Explicit Node.js version
-
-  ```yml
-  - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
-    with:
-      node-version: ${{ matrix.node }}
-  ```
-
-pnpm version should be set in the `packageManager` field inside `package.json`.
-
-`node_modules` and the Node.js binary are cached.
-When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
-
-- `node_modules` is not cached on Windows runners.
-- The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`) that the runner image does not already ship.
-- Caches are saved only on the default branch, the one place every pull request can read them from.
-- When parallel jobs share a lockfile, let one of them save the caches:
-
-  ```yml
-  - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
-    with:
-      save-cache: false
-  ```
-
-### `setup-github-app-user-bot`
-
-> [!IMPORTANT]
-> Grant the GitHub App only the minimum permissions required for your use case.
-> Overly broad permissions increase the blast radius if the token is compromised.
-
-```yml
-- name: Setup release helper
-  id: release-helper
-  uses: marcalexiei/github-actions/setup-github-app-user-bot@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
-  with:
-    app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
-    private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
-
-- name: Configure git user for GitHub App
-  run: |
-    git config --global user.name "${BOT_NAME}"
-    git config --global user.email "${BOT_EMAIL}"
-  env:
-    BOT_NAME: ${{ steps.release-helper.outputs.bot-name }}
-    BOT_EMAIL: ${{ steps.release-helper.outputs.bot-email }}
-```
-
-### `pin-readme-version`
-
-For a workflow that runs on a published release.
-It points the `uses:` lines in a README at the commit the release tag was cut from, written as `@<sha> # <tag>`, so an example is pinned the way it should be copied.
-
-```yml
-- name: Checkout
-  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-  with:
-    ref: main # a release event checks out the tag
-    persist-credentials: false
-
-- name: Pin the examples
-  uses: marcalexiei/github-actions/pin-readme-version@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
-  with:
-    tag: ${{ github.event.release.tag_name }}
-```
-
-- `files` takes space-separated files or globs, `README.md` by default.
-- It matches `@v0`, `@<sha>` and `@<sha> # vX.Y.Z` alike, with or without a path after the repository.
-- It only rewrites the files: commit them, or open a pull request, in a later step.
+- [`setup-node-and-pnpm`](setup-node-and-pnpm/README.md): sets up pnpm and Node.js, and installs the dependencies with `node_modules` cached
+- [`setup-github-app-user-bot`](setup-github-app-user-bot/README.md): a GitHub App token, and the bot's name and email to commit as
+- [`pin-readme-version`](pin-readme-version/README.md): points the `uses:` lines in a README at the commit a release tag was cut from
