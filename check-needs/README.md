@@ -17,7 +17,7 @@ ci-ok:
     contents: read # required to read the workflow file
   steps:
     - name: Check needed jobs
-      uses: marcalexiei/github-actions/check-needs@92c64c084d3479cff756151cb8163d03608f2acd # v2.4.2
+      uses: marcalexiei/github-actions/check-needs@4a51d6dfcaac0c263c6f2efd97249eafe0076721 # v2.5.0
       with:
         needs: ${{ toJSON(needs) }}
 ```
