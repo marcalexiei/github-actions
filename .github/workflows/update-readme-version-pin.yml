@@ -63,6 +63,7 @@ jobs:
         uses: $/pin-readme-version
         with:
           tag: ${{ env.TAG }}
+          files: README.md ./*/README.md
 
       # A clean tree opens no PR.
       # `chore`, not `docs`: release-please would list it in the next changelog.
@@ -74,7 +75,9 @@ jobs:
           BOT_USER: '${{ steps.release-helper.outputs.bot-name }} <${{ steps.release-helper.outputs.bot-email }}>'
         with:
           token: ${{ steps.release-helper.outputs.token }}
-          add-paths: README.md
+          add-paths: |
+            README.md
+            */README.md
           commit-message: 'chore: pin the README examples to ${{ env.TAG }}'
           author: ${{ env.BOT_USER }}
           committer: ${{ env.BOT_USER }}
@@ -83,7 +86,7 @@ jobs:
           title: 'chore: pin the README examples to ${{ env.TAG }}'
           body: >-
             The [update-readme-version-pin](${{ github.server_url }}/${{ github.repository }}/actions/workflows/update-readme-version-pin.yml)
-            workflow points the `uses:` lines in the README at the commit ${{ env.TAG }} was cut from.
+            workflow points the `uses:` lines in the READMEs at the commit ${{ env.TAG }} was cut from.
           labels: 'documentation'
 
       - name: Enable auto-merge
