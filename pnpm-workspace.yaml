@@ -3,3 +3,4 @@ minimumReleaseAge: 1440 # 1 day
 # The cooling-off period buys nothing against our own packages.
 minimumReleaseAgeExclude:
   - '@marcalexiei/oxfmt-config'
+  - '@marcalexiei/oxlint-config'

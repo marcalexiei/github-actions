@@ -12,3 +12,4 @@ Shared Github Actions utilities across marcalexiei account
 - [`setup-node-and-pnpm`](setup-node-and-pnpm/README.md): sets up pnpm and Node.js, and installs the dependencies with `node_modules` cached
 - [`setup-github-app-user-bot`](setup-github-app-user-bot/README.md): a GitHub App token, and the bot's name and email to commit as
 - [`pin-readme-version`](pin-readme-version/README.md): points the `uses:` lines in a README at the commit a release tag was cut from
+- [`check-needs`](check-needs/README.md): a gate job that fails unless every needed job succeeded, counting each matrix leg on its own

@@ -1,0 +1,62 @@
+name: Check needed jobs
+description: |
+  For a workflow's final gate job.
+  Fails unless every job in the gate's `needs` succeeded, counting each matrix leg on its own.
+  `needs` reports a matrix as `success` when a leg is cancelled before a runner picks it up.
+  Jobs outside `needs` are never judged.
+  Needs `actions: read` and `contents: read`, and the `yq` and `jq` GitHub's Ubuntu runners ship.
+
+inputs:
+  needs:
+    description: "The gate job's `needs`, passed through `toJSON(needs)`"
+    required: true
+  token:
+    description: "Token reading the workflow file and the run's jobs"
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Check needed results
+      shell: bash
+      env:
+        NEEDS: ${{ inputs.needs }}
+      run: |
+        if [ "$(jq 'length' <<< "${NEEDS}")" -eq 0 ]; then
+          echo "::error::needs is empty. Pass toJSON(needs) from a job that has needs."
+          exit 1
+        fi
+        errors="$(jq -r 'to_entries[] | select(.value.result != "success") | "::error::\(.key): \(.value.result)"' <<< "${NEEDS}")"
+        if [ -n "${errors}" ]; then
+          echo "${errors}"
+          exit 1
+        fi
+
+    - name: Check every needed job in the run
+      shell: bash
+      env:
+        NEEDS: ${{ inputs.needs }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        # GITHUB_WORKFLOW_REF is `owner/repo/<path>@<ref>`.
+        ref="${GITHUB_WORKFLOW_REF%%@*}"
+        path="${ref#*/*/}"
+        repo="${ref%"/${path}"}"
+
+        workflow="${RUNNER_TEMP}/check-needs-workflow.json"
+        gh api -H 'Accept: application/vnd.github.raw+json' \
+          "repos/${repo}/contents/${path}?ref=${GITHUB_WORKFLOW_SHA}" \
+          | yq -o=json '.jobs' > "${workflow}"
+
+        report="$(
+          gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
+            | jq -f "${GITHUB_ACTION_PATH}/check.jq" --slurpfile workflow "${workflow}"
+        )"
+        jq -r '.judged[] | "\(.name): \(.conclusion)"' <<< "${report}"
+        errors="$(jq -r '.errors[] | "::error::\(.)"' <<< "${report}")"
+        if [ -n "${errors}" ]; then
+          echo "${errors}"
+          exit 1
+        fi
