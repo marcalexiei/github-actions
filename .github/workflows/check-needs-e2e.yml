@@ -1,0 +1,124 @@
+name: check-needs e2e
+
+# Each job names its matrix legs the way GitHub does for one shape of `name:`,
+# so a gate that fails to match one of them fails here.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  named:
+    name: Named ${{ matrix.os }} ${{ matrix.n }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        os: [a, b]
+        n: [1, 2]
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  static-name:
+    name: Static name
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        n: [1, 2]
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  # The shape under test: GitHub names its legs `unnamed (…)`.
+  # jactionlint ignore=anonymous-definition
+  unnamed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        n: [1, 2]
+        include:
+          - n: 2
+            extra: x
+          - n: 3
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  object:
+    name: Object ${{ matrix.cfg.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        cfg:
+          - id: a
+            v: 1
+          - id: b
+            v: 2
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  # jactionlint ignore=anonymous-definition
+  unnamed-object:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        cfg:
+          - id: a
+          - id: b
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  single:
+    name: Single
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Succeed
+        run: 'true'
+
+  reusable:
+    name: Reusable ${{ matrix.n }}
+    strategy:
+      matrix:
+        n: [1, 2]
+    uses: $/.github/workflows/check-needs-e2e-called.yml
+
+  gate:
+    name: Gate
+    if: ${{ always() }}
+    needs:
+      - named
+      - static-name
+      - unnamed
+      - object
+      - unnamed-object
+      - single
+      - reusable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      actions: read # required to list the run's jobs
+      contents: read # required to read the workflow file
+    steps:
+      - name: Check needed jobs
+        uses: $/check-needs
+        with:
+          needs: ${{ toJSON(needs) }}

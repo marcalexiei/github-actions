@@ -1,0 +1,20 @@
+name: check-needs e2e (called)
+
+# Called by `check-needs-e2e.yml`, whose run lists this job as `<caller> / Called`.
+on:
+  workflow_call:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  called:
+    name: Called
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Succeed
+        run: 'true'
