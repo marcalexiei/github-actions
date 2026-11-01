@@ -13,7 +13,7 @@
     "@marcalexiei/oxfmt-config": "2.0.1",
     "@marcalexiei/oxlint-config": "1.8.0",
     "@types/node": "24.19.2",
-    "oxfmt": "0.72.0",
+    "oxfmt": "0.75.0",
     "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2004"
   },
