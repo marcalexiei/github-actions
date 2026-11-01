@@ -21,6 +21,8 @@ jobs:
     name: Code checks
     timeout-minutes: 5
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read # required to check out the repository
 
     steps:
       - name: Checkout
