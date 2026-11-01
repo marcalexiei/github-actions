@@ -170,8 +170,8 @@ importers:
         specifier: 2.0.1
         version: 2.0.1(oxfmt@0.72.0)
       '@marcalexiei/oxlint-config':
-        specifier: 1.8.0
-        version: 1.8.0(oxlint-tsgolint@7.0.2004)(oxlint@1.87.0(oxlint-tsgolint@7.0.2004))
+        specifier: 1.9.0
+        version: 1.9.0(oxlint-tsgolint@7.0.2004)(oxlint@1.87.0(oxlint-tsgolint@7.0.2004))
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -192,11 +192,11 @@ packages:
     peerDependencies:
       oxfmt: '>=0.65.0 <1'
 
-  '@marcalexiei/oxlint-config@1.8.0':
-    resolution: {integrity: sha512-2+OrO9E34OEoP2aydmAaLpTnRLbYzyZvTFnwJ/0tJ0+8TvQQCa7vTxtiSo1mr+/jHPQL7YhtHJiddLgfGlmHkQ==}
+  '@marcalexiei/oxlint-config@1.9.0':
+    resolution: {integrity: sha512-3dG+tGO9Zp0evSFMViLYXye9AvNvUIzmcDQftj19BDb6nBtio6QjTn/EehHENN/5wNFNQc0HWhXtrxZ/p1xmmQ==}
     peerDependencies:
-      oxlint: '>=1.86.0 <2'
-      oxlint-tsgolint: '>=7.0.2003 <8'
+      oxlint: '>=1.90.0 <2'
+      oxlint-tsgolint: '>=7.0.2005 <8'
     peerDependenciesMeta:
       oxlint-tsgolint:
         optional: true
@@ -521,7 +521,7 @@ snapshots:
     dependencies:
       oxfmt: 0.72.0
 
-  '@marcalexiei/oxlint-config@1.8.0(oxlint-tsgolint@7.0.2004)(oxlint@1.87.0(oxlint-tsgolint@7.0.2004))':
+  '@marcalexiei/oxlint-config@1.9.0(oxlint-tsgolint@7.0.2004)(oxlint@1.87.0(oxlint-tsgolint@7.0.2004))':
     dependencies:
       oxlint: 1.87.0(oxlint-tsgolint@7.0.2004)
     optionalDependencies:
