@@ -11,6 +11,10 @@
     {
       "matchPackageNames": ["@marcalexiei/oxlint-config", "oxlint", "oxlint-tsgolint"],
       "groupName": "oxlint"
+    },
+    {
+      "matchPackageNames": ["@marcalexiei/oxfmt-config", "oxfmt"],
+      "groupName": "oxfmt"
     }
   ]
 }
