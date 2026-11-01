@@ -21,7 +21,7 @@ defaults:
 jobs:
   named:
     name: Named ${{ matrix.os }} ${{ matrix.n }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -33,7 +33,7 @@ jobs:
 
   static-name:
     name: Static name
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -45,7 +45,7 @@ jobs:
   # The shape under test: GitHub names its legs `unnamed (…)`.
   # jactionlint ignore=anonymous-definition
   unnamed:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -60,7 +60,7 @@ jobs:
 
   object:
     name: Object ${{ matrix.cfg.id }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -75,7 +75,7 @@ jobs:
 
   # jactionlint ignore=anonymous-definition
   unnamed-object:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -89,7 +89,7 @@ jobs:
   # GitHub names the empty leg `Empty`, trimming the space.
   empty-expression:
     name: Empty ${{ matrix.suffix }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     strategy:
       matrix:
@@ -100,7 +100,7 @@ jobs:
 
   single:
     name: Single
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     steps:
       - name: Succeed
@@ -125,7 +125,7 @@ jobs:
       - empty-expression
       - single
       - reusable
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 2
     permissions:
       actions: read # required to list the run's jobs
