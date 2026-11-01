@@ -7,6 +7,10 @@
     {
       "matchFileNames": ["setup-node-and-pnpm/**", "setup-github-app-user-bot/**"],
       "semanticCommitType": "feat"
+    },
+    {
+      "matchPackageNames": ["@marcalexiei/oxlint-config", "oxlint", "oxlint-tsgolint"],
+      "groupName": "oxlint"
     }
   ]
 }
