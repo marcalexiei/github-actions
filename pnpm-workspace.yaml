@@ -4,3 +4,5 @@ minimumReleaseAge: 1440 # 1 day
 minimumReleaseAgeExclude:
   - '@marcalexiei/oxfmt-config'
   - '@marcalexiei/oxlint-config'
+
+autoDedupe: true
