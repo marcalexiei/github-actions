@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.3](https://github.com/marcalexiei/github-actions/compare/v2.6.2...v2.6.3) (2026-11-19)
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** download pnpm directly on Windows too ([#147](https://github.com/marcalexiei/github-actions/issues/147)) ([f56190d](https://github.com/marcalexiei/github-actions/commit/f56190d59cdcf06514575a93b8769235b41f57eb))
+
 ## [2.6.2](https://github.com/marcalexiei/github-actions/compare/v2.6.1...v2.6.2) (2026-11-19)
 
 
