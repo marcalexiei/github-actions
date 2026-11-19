@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.1](https://github.com/marcalexiei/github-actions/compare/v2.6.0...v2.6.1) (2026-11-19)
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** cache pnpm and Node.js in one entry ([#133](https://github.com/marcalexiei/github-actions/issues/133)) ([95dad15](https://github.com/marcalexiei/github-actions/commit/95dad156e41290da3c2b42e5161748433f2555ea))
+
 ## [2.6.0](https://github.com/marcalexiei/github-actions/compare/v2.5.0...v2.6.0) (2026-11-19)
 
 
