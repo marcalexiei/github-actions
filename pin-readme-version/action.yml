@@ -1,8 +1,5 @@
 name: Pin README version
-description: |
-  Points every `uses: <repository>[/<path>]@…` line in the given files at the commit a release tag was cut from,
-  written as `@<sha> # <tag>`.
-  Run it after actions/checkout, in the repository the tag belongs to.
+description: Points the `uses:` lines in the given files at the commit a release tag was cut from. Run it after actions/checkout.
 
 inputs:
   tag:
