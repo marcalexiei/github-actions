@@ -1,11 +1,5 @@
 name: Setup GitHub App Bot User
-description: |
-  Configures a GitHub App bot user for authentication and interactions.
-  This action:
-  - Creates an installation access token for the GitHub App
-  - Retrieves the bot user ID
-  - Provides bot credentials (token, name, email, ID) as outputs
-  @see https://github.com/actions/create-github-app-token?tab=readme-ov-file#create-a-git-committer-string-for-an-app-installation
+description: Creates a GitHub App installation token, and the bot's name and email to commit as.
 
 inputs:
   app-id:
