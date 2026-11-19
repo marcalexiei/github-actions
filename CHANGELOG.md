@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.6.0](https://github.com/marcalexiei/github-actions/compare/v2.5.0...v2.6.0) (2026-11-19)
+
+
+### Features
+
+* **deps:** update the actions the published actions use ([#126](https://github.com/marcalexiei/github-actions/issues/126)) ([4663161](https://github.com/marcalexiei/github-actions/commit/4663161f3e59c571607265a8e3f8a71c7103188b))
+
+
+### Bug Fixes
+
+* **pin-readme-version:** accept only strict vX.Y.Z tags ([#124](https://github.com/marcalexiei/github-actions/issues/124)) ([3f34727](https://github.com/marcalexiei/github-actions/commit/3f347270375a3a65bafb52c36533c1aa210e4058))
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** cache pnpm ([#127](https://github.com/marcalexiei/github-actions/issues/127)) ([14b2b2a](https://github.com/marcalexiei/github-actions/commit/14b2b2aa5f97d93d4d716f6f40bd92e17049b44a))
+* **setup-node-and-pnpm:** restore the last node_modules after a lockfile change ([#130](https://github.com/marcalexiei/github-actions/issues/130)) ([d6fbe04](https://github.com/marcalexiei/github-actions/commit/d6fbe04a60fe33b5bc35a177b0eff959edd2579b))
+
 ## [2.5.0](https://github.com/marcalexiei/github-actions/compare/v2.4.2...v2.5.0) (2026-10-30)
 
 
