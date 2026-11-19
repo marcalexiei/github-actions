@@ -7,7 +7,7 @@
 ```yml
 - name: Setup release helper
   id: release-helper
-  uses: marcalexiei/github-actions/setup-github-app-user-bot@0ac3ea042e173813ebc7b086c174705c5bfc0fb6 # v2.6.2
+  uses: marcalexiei/github-actions/setup-github-app-user-bot@a940b1e965ddfc255d1ce7bf8a7f0f88eeb0af18 # v2.6.3
   with:
     app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
     private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}

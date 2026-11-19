@@ -6,14 +6,14 @@ Usage example:
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@0ac3ea042e173813ebc7b086c174705c5bfc0fb6 # v2.6.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@a940b1e965ddfc255d1ce7bf8a7f0f88eeb0af18 # v2.6.3
   ```
 
 - With Explicit Node.js version
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@0ac3ea042e173813ebc7b086c174705c5bfc0fb6 # v2.6.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@a940b1e965ddfc255d1ce7bf8a7f0f88eeb0af18 # v2.6.3
     with:
       node-version: ${{ matrix.node }}
   ```
@@ -33,7 +33,7 @@ After a lockfile change, the last `node_modules` saved for the same Node.js and 
 
   ```yml
   - name: Install Dependencies
-    uses: marcalexiei/github-actions/setup-node-and-pnpm@0ac3ea042e173813ebc7b086c174705c5bfc0fb6 # v2.6.2
+    uses: marcalexiei/github-actions/setup-node-and-pnpm@a940b1e965ddfc255d1ce7bf8a7f0f88eeb0af18 # v2.6.3
     with:
       save-cache: false
   ```
