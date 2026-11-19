@@ -50,7 +50,7 @@ jobs:
       contents: read # required to check out the repository
     strategy:
       matrix:
-        os: [macos-26, windows-latest]
+        os: [macos-26, windows-2025]
 
     steps:
       - name: Checkout
