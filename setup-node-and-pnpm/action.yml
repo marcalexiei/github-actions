@@ -108,6 +108,7 @@ runs:
         key: ${{ steps.pnpm-binary.outputs.cache-primary-key }}
 
     # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
+    # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
     - name: Restore node_modules
       id: node-modules
       if: ${{ runner.os != 'Windows' }}
@@ -115,6 +116,7 @@ runs:
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
         key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-
 
     # setup-node downloads every version the runner image doesn't ship.
     - name: Restore Node.js
