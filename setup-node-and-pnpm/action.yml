@@ -3,7 +3,7 @@ description: |
   This is a composite GitHub Action that:
   - Sets up pnpm package manager
   - Configures Node.js environment
-  - Installs project dependencies, caching pnpm, the Node.js binary and node_modules
+  - Installs project dependencies, caching the Node.js binary and node_modules
 
 inputs:
   node-version:
@@ -15,7 +15,7 @@ inputs:
 outputs:
   cache-hit:
     description: 'Whether node_modules was restored from the cache (install skipped)'
-    value: ${{ steps.node-modules.outputs.cache-hit == 'true' }}
+    value: ${{ steps.versions.outputs.node-modules != '' && steps.deps.outputs.cache-hit == 'true' }}
 
 runs:
   using: composite
@@ -46,6 +46,7 @@ runs:
             ;;
         esac
         pnpm="${pm%%+*}"
+        version="${pnpm#pnpm@}"
 
         node="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
         node="${node#v}"
@@ -54,80 +55,95 @@ runs:
         # The runner image already ships it, and finds it faster than a cache restores it.
         [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
 
-        # Not pnpm on Windows, where pnpm/action-setup lays it out differently.
-        key="$RUNNER_OS-$RUNNER_ARCH-tools"
-        paths=''
-        if [ "$RUNNER_OS" != Windows ]; then
-          key+="-$pnpm"
-          paths="$HOME/setup-pnpm"
+        # pnpm 12 ships one native binary per platform, so it skips pnpm/action-setup's two installs.
+        # Not on Windows, whose paths this step does not handle.
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          Linux-X64) platform=linux-x64 ;;
+          Linux-ARM64) platform=linux-arm64 ;;
+          macOS-X64) platform=darwin-x64 ;;
+          macOS-ARM64) platform=darwin-arm64 ;;
+          *) platform='' ;;
+        esac
+        if [ "$RUNNER_OS" = Linux ] && ldd --version 2>&1 | grep -q musl; then platform+=-musl; fi
+        if [ "${version%%.*}" -ge 12 ] 2>/dev/null && [ -n "$platform" ]; then
+          dir="$RUNNER_TOOL_CACHE/pnpm/$version/$platform"
+          echo "pnpm-dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "pnpm-package=@pnpm/exe.$platform" >> "$GITHUB_OUTPUT"
+          # Downloads while the cache restores. Redirected, so the step does not wait for it.
+          if [ ! -x "$dir/pnpm" ]; then
+            nohup bash "$GITHUB_ACTION_PATH/download-pnpm.sh" "@pnpm/exe.$platform" "$version" "$RUNNER_TEMP/pnpm-download" \
+              > "$RUNNER_TEMP/pnpm-download.log" 2>&1 < /dev/null &
+            echo "pnpm-pid=$!" >> "$GITHUB_OUTPUT"
+          fi
         fi
-        if [ -n "$exact" ]; then
-          key+="-node$exact"
-          paths+="${paths:+$'\n'}$RUNNER_TOOL_CACHE/node/$exact"
+
+        # One entry for the Node.js binary and node_modules: a restore's lookup can cost as much as its download.
+        # Not node_modules on Windows: tar does not round-trip pnpm's junctions.
+        key="$RUNNER_OS-$RUNNER_ARCH-deps-node$node-$pnpm"
+        paths=''
+        [ -n "$exact" ] && paths="$RUNNER_TOOL_CACHE/node/$exact"
+        node_modules=''
+        if [ "$RUNNER_OS" != Windows ] && [ -f pnpm-lock.yaml ]; then
+          node_modules="$(awk -f "$GITHUB_ACTION_PATH/importers.awk" pnpm-lock.yaml | sort -u)"
+          paths+="${paths:+$'\n'}$node_modules"
+          echo "deps-restore-key=$key-" >> "$GITHUB_OUTPUT"
+          key+="-$(cat pnpm-lock.yaml pnpm-workspace.yaml 2>/dev/null | openssl dgst -sha256 -r | cut -c1-64)"
         fi
 
         {
           echo "pnpm=$pnpm"
           echo "node=$node"
           echo "save=$SAVE"
-          echo "tools-key=$key"
-          [ -z "$paths" ] || printf 'tools-paths<<EOF\n%s\nEOF\n' "$paths"
+          echo "deps-key=$key"
+          [ -z "$paths" ] || printf 'deps-paths<<EOF\n%s\nEOF\n' "$paths"
+          [ -z "$node_modules" ] || printf 'node-modules<<EOF\n%s\nEOF\n' "$node_modules"
         } >> "$GITHUB_OUTPUT"
 
-    # One entry for pnpm and Node.js: a restore's lookup can cost as much as its download.
-    # pnpm/action-setup downloads pnpm twice per run, and setup-node every version the image lacks.
-    - name: Restore pnpm and Node.js
-      id: tools
-      if: ${{ steps.versions.outputs.tools-paths != '' }}
+    # A hit skips `pnpm install`.
+    # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
+    - name: Restore Node.js and node_modules
+      id: deps
+      if: ${{ steps.versions.outputs.deps-paths != '' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: ${{ steps.versions.outputs.tools-paths }}
-        key: ${{ steps.versions.outputs.tools-key }}
-
-    # Sets PATH and PNPM_HOME the way pnpm/action-setup does for its default `dest`.
-    - name: Use the restored pnpm
-      id: pnpm-restored
-      if: ${{ runner.os != 'Windows' && steps.tools.outputs.cache-hit == 'true' }}
-      shell: bash
-      env:
-        VERSION: ${{ steps.versions.outputs.pnpm }}
-      run: | # zizmor: ignore[github-env] -- fixed paths, and only the default branch saves this cache
-        home="$HOME/setup-pnpm/node_modules/.bin"
-        # A restore that does not run falls back to pnpm/action-setup.
-        actual="$(PNPM_HOME="$home" PATH="$home/bin:$home:$PATH" pnpm --version 2>/dev/null || true)"
-        if [ "pnpm@${actual}" != "$VERSION" ]; then
-          echo "::warning::The restored pnpm reports '${actual}', not ${VERSION#pnpm@}. Installing it instead."
-          exit 0
-        fi
-        echo "$home" >> "$GITHUB_PATH"
-        echo "$home/bin" >> "$GITHUB_PATH"
-        echo "PNPM_HOME=$home" >> "$GITHUB_ENV"
-        echo "ok=true" >> "$GITHUB_OUTPUT"
+        path: ${{ steps.versions.outputs.deps-paths }}
+        key: ${{ steps.versions.outputs.deps-key }}
+        restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
     - name: Install pnpm
-      if: ${{ steps.pnpm-restored.outputs.ok != 'true' }}
-      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-    - name: Resolve node_modules paths
-      id: resolve
+      if: ${{ steps.versions.outputs.pnpm-dir != '' }}
       shell: bash
-      run: |
-        {
-          echo 'node-modules<<EOF'
-          pnpm ls -r --depth -1 --json | jq -r '.[].path + "/node_modules"'
-          echo 'EOF'
-        } >> "$GITHUB_OUTPUT"
+      env:
+        DIR: ${{ steps.versions.outputs.pnpm-dir }}
+        PACKAGE: ${{ steps.versions.outputs.pnpm-package }}
+        PID: ${{ steps.versions.outputs.pnpm-pid }}
+        VERSION: ${{ steps.versions.outputs.pnpm }}
+      run: | # zizmor: ignore[github-env] -- a path under the runner's tool cache, named after the pinned version
+        if [ ! -x "$DIR/pnpm" ]; then
+          download="$RUNNER_TEMP/pnpm-download"
+          while [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; do sleep 0.1; done
+          verify() {
+            [ "sha512-$(openssl dgst -sha512 -binary "$download/pnpm.tgz" | openssl base64 -A)" = "$(jq -r .dist.integrity "$download/meta.json")" ]
+          }
+          # The background download may have failed: retry in the foreground.
+          if ! verify 2>/dev/null; then
+            bash "$GITHUB_ACTION_PATH/download-pnpm.sh" "$PACKAGE" "${VERSION#pnpm@}" "$download"
+            if ! verify; then
+              echo "::error::$PACKAGE@${VERSION#pnpm@} does not match the integrity the registry lists."
+              exit 1
+            fi
+          fi
+          mkdir -p "$DIR"
+          tar -xzf "$download/pnpm.tgz" -C "$DIR" --strip-components=1 package/pnpm
+          # Like pnpm's own install: the binary acts on the name it runs as.
+          for name in pn pnpx pnx; do ln -f "$DIR/pnpm" "$DIR/$name"; done
+        fi
+        echo "$DIR" >> "$GITHUB_PATH"
+        echo "PNPM_HOME=$DIR" >> "$GITHUB_ENV"
 
-    # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
-    # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
-    - name: Restore node_modules
-      id: node-modules
-      if: ${{ runner.os != 'Windows' }}
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.resolve.outputs.node-modules }}
-        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.pnpm }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
-        restore-keys: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.pnpm }}-
+    - name: Install pnpm with pnpm/action-setup
+      if: ${{ steps.versions.outputs.pnpm-dir == '' }}
+      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -136,23 +152,15 @@ runs:
         package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
 
-    # Before `pnpm install` adds packages to the store under PNPM_HOME.
-    - name: Save pnpm and Node.js
-      if: ${{ steps.versions.outputs.tools-paths != '' && steps.tools.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.versions.outputs.tools-paths }}
-        key: ${{ steps.versions.outputs.tools-key }}
-
     - name: Install Dependencies
-      if: ${{ steps.node-modules.outputs.cache-hit != 'true' }}
+      if: ${{ steps.versions.outputs.node-modules == '' || steps.deps.outputs.cache-hit != 'true' }}
       shell: bash
       run: pnpm install --frozen-lockfile
 
     # Before any later step writes into node_modules (e.g. `.vite`).
-    - name: Save node_modules
-      if: ${{ runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
+    - name: Save Node.js and node_modules
+      if: ${{ steps.versions.outputs.deps-paths != '' && steps.deps.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: ${{ steps.resolve.outputs.node-modules }}
-        key: ${{ steps.node-modules.outputs.cache-primary-key }}
+        path: ${{ steps.versions.outputs.deps-paths }}
+        key: ${{ steps.versions.outputs.deps-key }}
