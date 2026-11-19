@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.5](https://github.com/marcalexiei/github-actions/compare/v2.6.4...v2.6.5) (2026-11-19)
+
+
+### Bug Fixes
+
+* **setup-node-and-pnpm:** skip node_modules cached against the old pnpm store ([#154](https://github.com/marcalexiei/github-actions/issues/154)) ([954435c](https://github.com/marcalexiei/github-actions/commit/954435ca0bc08ecfab4b02ba6c2514d77e7306a7))
+
 ## [2.6.4](https://github.com/marcalexiei/github-actions/compare/v2.6.3...v2.6.4) (2026-11-19)
 
 
