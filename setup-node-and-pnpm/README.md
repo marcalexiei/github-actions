@@ -20,7 +20,7 @@ Usage example:
 
 pnpm version should be set in the `packageManager` field inside `package.json`.
 
-With pnpm 12 or later on Linux, macOS and Windows, pnpm is downloaded from the npm registry and checked against its integrity. Otherwise `pnpm/action-setup` installs it.
+With pnpm 11 or later, `pnpm/setup` installs pnpm's native binary, checked against npm's signature. Otherwise `pnpm/action-setup` installs it.
 
 `node_modules` and the Node.js binary are cached together.
 When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
