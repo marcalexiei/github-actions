@@ -31,7 +31,6 @@ runs:
           exit 1
         fi
         pnpm="${pm%%+*}"
-        version="${pnpm#pnpm@}"
 
         node="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
         node="${node#v}"
@@ -52,8 +51,7 @@ runs:
         fi
 
         {
-          echo "pnpm-version=$version"
-          echo "pnpm-major=${version%%.*}"
+          echo "pnpm-version=${pnpm#pnpm@}"
           echo "node=$node"
           echo "save=$SAVE"
           echo "deps-key=$key"
@@ -71,18 +69,12 @@ runs:
         key: ${{ steps.versions.outputs.deps-key }}
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
-    # pnpm's native binary, checked against npm's signature; pnpm/setup needs pnpm 11 or later.
     - name: Install pnpm
-      if: ${{ steps.versions.outputs.pnpm-major >= 11 }}
       uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
       with:
         version: ${{ steps.versions.outputs.pnpm-version }}
         node-version-file: false
         install: false
-
-    - name: Install pnpm with pnpm/action-setup
-      if: ${{ steps.versions.outputs.pnpm-major < 11 }}
-      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
