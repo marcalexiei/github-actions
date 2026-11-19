@@ -20,11 +20,13 @@ Usage example:
 
 pnpm version should be set in the `packageManager` field inside `package.json`.
 
-pnpm, `node_modules` and the Node.js binary are cached.
+With pnpm 12 or later on Linux and macOS, pnpm is downloaded from the npm registry and checked against its integrity. Otherwise `pnpm/action-setup` installs it.
+
+`node_modules` and the Node.js binary are cached together.
 When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
 After a lockfile change, the last `node_modules` saved for the same Node.js and pnpm versions is restored instead, and `pnpm install` only adds what changed.
 
-- pnpm and `node_modules` are not cached on Windows runners.
+- `node_modules` is not cached on Windows runners.
 - The Node.js binary is cached only for an exact version (`24.20.0`, not `24.20` or `24`) that the runner image does not already ship.
 - Caches are saved only on the default branch, the one place every pull request can read them from.
 - When parallel jobs share a lockfile, let one of them save the caches:
