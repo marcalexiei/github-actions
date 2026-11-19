@@ -64,14 +64,14 @@ jobs:
           fi
       - name: Run zizmor
         if: ${{ steps.changes.outputs.github == 'true' }}
-        uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
           advanced-security: false
           annotations: true
       - name: Run jactionlint
         # still runs when zizmor fails, so one run reports both
         if: ${{ !cancelled() && steps.changes.outputs.github == 'true' }}
-        uses: jdx/jactionlint@a0bb9f012b6b5760c17c9ccd040001d08002a10e # v2.1.0
+        uses: jdx/jactionlint@72c00452809bcca05b8bc12acdcf15dd7a9c1c5e # v2.6.0
         with:
           online: strict # a lookup it cannot make fails the job instead of being skipped
 
