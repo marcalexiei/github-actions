@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.2](https://github.com/marcalexiei/github-actions/compare/v2.6.1...v2.6.2) (2026-11-19)
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** download pnpm directly and cache Node.js with node_modules ([#137](https://github.com/marcalexiei/github-actions/issues/137)) ([1e9813d](https://github.com/marcalexiei/github-actions/commit/1e9813df98c7d34ddd6bff53893e8b3300527cc6))
+
 ## [2.6.1](https://github.com/marcalexiei/github-actions/compare/v2.6.0...v2.6.1) (2026-11-19)
 
 
