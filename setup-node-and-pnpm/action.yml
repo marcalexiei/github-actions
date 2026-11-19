@@ -15,7 +15,7 @@ inputs:
 outputs:
   cache-hit:
     description: 'Whether node_modules was restored from the cache (install skipped)'
-    value: ${{ steps.versions.outputs.node-modules != '' && steps.deps.outputs.cache-hit == 'true' }}
+    value: ${{ runner.os != 'Windows' && steps.deps.outputs.cache-hit == 'true' }}
 
 runs:
   using: composite
@@ -29,24 +29,12 @@ runs:
         # Pull requests can read the default branch's caches, but not each other's.
         SAVE: ${{ inputs.save-cache == 'true' && github.ref_name == github.event.repository.default_branch }}
       run: |
-        if [ ! -f package.json ]; then
-          echo "::error::package.json was not found in the repository root. Run actions/checkout before this action."
+        pm="$(jq -r '.packageManager // ""' package.json || true)"
+        if [[ "$pm" != pnpm@* ]]; then
+          echo "::error::Set 'packageManager' in package.json to pnpm, e.g. \"pnpm@12.21.0\" (got: '$pm'). Run actions/checkout before this action."
           exit 1
         fi
-        pm=$(jq -r '.packageManager // ""' package.json)
-        if [ -z "$pm" ]; then
-          echo "::error::The 'packageManager' field is missing from package.json. Set it to e.g. \"pnpm@10.33.4\"."
-          exit 1
-        fi
-        case "$pm" in
-          pnpm@*) ;;
-          *)
-            echo "::error::The 'packageManager' field in package.json is not pnpm (got: $pm)."
-            exit 1
-            ;;
-        esac
         pnpm="${pm%%+*}"
-        version="${pnpm#pnpm@}"
 
         node="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
         node="${node#v}"
@@ -55,48 +43,23 @@ runs:
         # The runner image already ships it, and finds it faster than a cache restores it.
         [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
 
-        # pnpm 12 ships one native binary per platform, so it skips pnpm/action-setup's two installs.
-        # Not on Windows, whose paths this step does not handle.
-        case "$RUNNER_OS-$RUNNER_ARCH" in
-          Linux-X64) platform=linux-x64 ;;
-          Linux-ARM64) platform=linux-arm64 ;;
-          macOS-X64) platform=darwin-x64 ;;
-          macOS-ARM64) platform=darwin-arm64 ;;
-          *) platform='' ;;
-        esac
-        if [ "$RUNNER_OS" = Linux ] && ldd --version 2>&1 | grep -q musl; then platform+=-musl; fi
-        if [ "${version%%.*}" -ge 12 ] 2>/dev/null && [ -n "$platform" ]; then
-          dir="$RUNNER_TOOL_CACHE/pnpm/$version/$platform"
-          echo "pnpm-dir=$dir" >> "$GITHUB_OUTPUT"
-          echo "pnpm-package=@pnpm/exe.$platform" >> "$GITHUB_OUTPUT"
-          # Downloads while the cache restores. Redirected, so the step does not wait for it.
-          if [ ! -x "$dir/pnpm" ]; then
-            nohup bash "$GITHUB_ACTION_PATH/download-pnpm.sh" "@pnpm/exe.$platform" "$version" "$RUNNER_TEMP/pnpm-download" \
-              > "$RUNNER_TEMP/pnpm-download.log" 2>&1 < /dev/null &
-            echo "pnpm-pid=$!" >> "$GITHUB_OUTPUT"
-          fi
-        fi
-
         # One entry for the Node.js binary and node_modules: a restore's lookup can cost as much as its download.
         # Not node_modules on Windows: tar does not round-trip pnpm's junctions.
         key="$RUNNER_OS-$RUNNER_ARCH-deps-node$node-$pnpm"
         paths=''
         [ -n "$exact" ] && paths="$RUNNER_TOOL_CACHE/node/$exact"
-        node_modules=''
-        if [ "$RUNNER_OS" != Windows ] && [ -f pnpm-lock.yaml ]; then
-          node_modules="$(awk -f "$GITHUB_ACTION_PATH/importers.awk" pnpm-lock.yaml | sort -u)"
-          paths+="${paths:+$'\n'}$node_modules"
+        if [ "$RUNNER_OS" != Windows ]; then
+          paths+="${paths:+$'\n'}$(awk -f "$GITHUB_ACTION_PATH/importers.awk" pnpm-lock.yaml | sort -u)"
           echo "deps-restore-key=$key-" >> "$GITHUB_OUTPUT"
           key+="-$(cat pnpm-lock.yaml pnpm-workspace.yaml 2>/dev/null | openssl dgst -sha256 -r | cut -c1-64)"
         fi
 
         {
-          echo "pnpm=$pnpm"
+          echo "pnpm-version=${pnpm#pnpm@}"
           echo "node=$node"
           echo "save=$SAVE"
           echo "deps-key=$key"
           [ -z "$paths" ] || printf 'deps-paths<<EOF\n%s\nEOF\n' "$paths"
-          [ -z "$node_modules" ] || printf 'node-modules<<EOF\n%s\nEOF\n' "$node_modules"
         } >> "$GITHUB_OUTPUT"
 
     # A hit skips `pnpm install`.
@@ -110,39 +73,42 @@ runs:
         key: ${{ steps.versions.outputs.deps-key }}
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
+    # pnpm 12 ships one native binary per platform, so it skips pnpm/action-setup's two installs.
+    # Not on Windows, whose paths this step does not handle.
     - name: Install pnpm
-      if: ${{ steps.versions.outputs.pnpm-dir != '' }}
+      id: pnpm
       shell: bash
       env:
-        DIR: ${{ steps.versions.outputs.pnpm-dir }}
-        PACKAGE: ${{ steps.versions.outputs.pnpm-package }}
-        PID: ${{ steps.versions.outputs.pnpm-pid }}
-        VERSION: ${{ steps.versions.outputs.pnpm }}
+        VERSION: ${{ steps.versions.outputs.pnpm-version }}
       run: | # zizmor: ignore[github-env] -- a path under the runner's tool cache, named after the pinned version
-        if [ ! -x "$DIR/pnpm" ]; then
-          download="$RUNNER_TEMP/pnpm-download"
-          while [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; do sleep 0.1; done
-          verify() {
-            [ "sha512-$(openssl dgst -sha512 -binary "$download/pnpm.tgz" | openssl base64 -A)" = "$(jq -r .dist.integrity "$download/meta.json")" ]
-          }
-          # The background download may have failed: retry in the foreground.
-          if ! verify 2>/dev/null; then
-            bash "$GITHUB_ACTION_PATH/download-pnpm.sh" "$PACKAGE" "${VERSION#pnpm@}" "$download"
-            if ! verify; then
-              echo "::error::$PACKAGE@${VERSION#pnpm@} does not match the integrity the registry lists."
-              exit 1
-            fi
-          fi
-          mkdir -p "$DIR"
-          tar -xzf "$download/pnpm.tgz" -C "$DIR" --strip-components=1 package/pnpm
-          # Like pnpm's own install: the binary acts on the name it runs as.
-          for name in pn pnpx pnx; do ln -f "$DIR/pnpm" "$DIR/$name"; done
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          Linux-X64) platform=linux-x64 ;;
+          Linux-ARM64) platform=linux-arm64 ;;
+          macOS-X64) platform=darwin-x64 ;;
+          macOS-ARM64) platform=darwin-arm64 ;;
+          *) exit 0 ;;
+        esac
+        [ "${VERSION%%.*}" -ge 12 ] || exit 0
+        if [ "$RUNNER_OS" = Linux ] && ldd --version 2>&1 | grep -q musl; then platform+=-musl; fi
+
+        meta="$(curl -fsSL --retry 3 "https://registry.npmjs.org/@pnpm/exe.$platform/$VERSION")"
+        tgz="$RUNNER_TEMP/pnpm.tgz"
+        curl -fsSL --retry 3 -o "$tgz" "$(jq -r .dist.tarball <<< "$meta")"
+        if [ "sha512-$(openssl dgst -sha512 -binary "$tgz" | openssl base64 -A)" != "$(jq -r .dist.integrity <<< "$meta")" ]; then
+          echo "::error::@pnpm/exe.$platform@$VERSION does not match the integrity the registry lists."
+          exit 1
         fi
-        echo "$DIR" >> "$GITHUB_PATH"
-        echo "PNPM_HOME=$DIR" >> "$GITHUB_ENV"
+        dir="$RUNNER_TOOL_CACHE/pnpm/$VERSION/$platform"
+        mkdir -p "$dir"
+        tar -xzf "$tgz" -C "$dir" --strip-components=1 package/pnpm
+        # Like pnpm's own install: the binary acts on the name it runs as.
+        for name in pn pnpx pnx; do ln -f "$dir/pnpm" "$dir/$name"; done
+        echo "$dir" >> "$GITHUB_PATH"
+        echo "PNPM_HOME=$dir" >> "$GITHUB_ENV"
+        echo "installed=true" >> "$GITHUB_OUTPUT"
 
     - name: Install pnpm with pnpm/action-setup
-      if: ${{ steps.versions.outputs.pnpm-dir == '' }}
+      if: ${{ steps.pnpm.outputs.installed != 'true' }}
       uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
     - name: Setup Node.js
@@ -153,7 +119,7 @@ runs:
         registry-url: 'https://registry.npmjs.org'
 
     - name: Install Dependencies
-      if: ${{ steps.versions.outputs.node-modules == '' || steps.deps.outputs.cache-hit != 'true' }}
+      if: ${{ runner.os == 'Windows' || steps.deps.outputs.cache-hit != 'true' }}
       shell: bash
       run: pnpm install --frozen-lockfile
 
