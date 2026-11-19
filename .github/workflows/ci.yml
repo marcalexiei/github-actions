@@ -42,6 +42,30 @@ jobs:
       - name: Test
         run: pnpm run test
 
+  setup-node-and-pnpm:
+    name: setup-node-and-pnpm on ${{ matrix.os }}
+    timeout-minutes: 10
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read # required to check out the repository
+    strategy:
+      matrix:
+        os: [macos-26, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Dependencies
+        uses: $/setup-node-and-pnpm
+        with:
+          save-cache: false
+
+      - name: Run each pnpm name
+        run: for name in pnpm pn pnpx pnx; do "$name" --version; done
+
   github-actions-audit:
     name: GitHub Actions audit
     runs-on: ubuntu-26.04
@@ -83,6 +107,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - checks
+      - setup-node-and-pnpm
       - github-actions-audit
     permissions:
       actions: read # required to list the run's jobs
