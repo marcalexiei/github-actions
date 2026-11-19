@@ -47,6 +47,6 @@ runs:
         fi
 
         if [ -n "${errors}" ]; then
-          sed 's/^/::error::/' <<< "${errors}"
+          echo "::error::${errors//$'\n'/$'\n'::error::}"
           exit 1
         fi
