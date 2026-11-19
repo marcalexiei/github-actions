@@ -22,6 +22,7 @@ runs:
 
   steps:
     - name: Validate packageManager in package.json
+      id: package-manager
       shell: bash
       run: |
         if [ ! -f package.json ]; then
@@ -40,15 +41,40 @@ runs:
             exit 1
             ;;
         esac
+        echo "version=${pm%%+*}" >> "$GITHUB_OUTPUT"
 
-    # standalone: true makes pnpm/action-setup install @pnpm/exe (a Node-bundled
-    # binary), so the bootstrap pnpm runs regardless of the runner's system Node.
-    # With no `version` input, the action then reads `packageManager` from
-    # package.json and pnpm auto-switches to that version at install time.
-    - name: Install pnpm
-      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+    # pnpm/action-setup downloads pnpm twice per run: its bundled version, then the packageManager one.
+    - name: Restore pnpm
+      id: pnpm-binary
+      if: ${{ runner.os != 'Windows' }}
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        standalone: true
+        path: ~/setup-pnpm
+        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-binary-${{ steps.package-manager.outputs.version }}
+
+    # Sets PATH and PNPM_HOME the way pnpm/action-setup does for its default `dest`.
+    - name: Use the restored pnpm
+      id: pnpm-restored
+      if: ${{ steps.pnpm-binary.outputs.cache-hit == 'true' }}
+      shell: bash
+      env:
+        VERSION: ${{ steps.package-manager.outputs.version }}
+      run: | # zizmor: ignore[github-env] -- fixed paths, and only the default branch saves this cache
+        home="$HOME/setup-pnpm/node_modules/.bin"
+        # A restore that does not run falls back to pnpm/action-setup.
+        actual="$(PNPM_HOME="$home" PATH="$home/bin:$home:$PATH" pnpm --version 2>/dev/null || true)"
+        if [ "pnpm@${actual}" != "$VERSION" ]; then
+          echo "::warning::The restored pnpm reports '${actual}', not ${VERSION#pnpm@}. Installing it instead."
+          exit 0
+        fi
+        echo "$home" >> "$GITHUB_PATH"
+        echo "$home/bin" >> "$GITHUB_PATH"
+        echo "PNPM_HOME=$home" >> "$GITHUB_ENV"
+        echo "ok=true" >> "$GITHUB_OUTPUT"
+
+    - name: Install pnpm
+      if: ${{ steps.pnpm-restored.outputs.ok != 'true' }}
+      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
     - name: Resolve cache keys and paths
       id: resolve
@@ -68,20 +94,29 @@ runs:
           echo "node-version=$version"
           echo "node-exact=$exact"
           echo "save=$SAVE"
-          echo "pnpm-version=$(jq -r '.packageManager | split("+")[0]' package.json)"
           echo 'node-modules<<EOF'
           pnpm ls -r --depth -1 --json | jq -r '.[].path + "/node_modules"'
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
 
+    # Before `pnpm install` adds packages to the store under PNPM_HOME.
+    - name: Save pnpm
+      if: ${{ runner.os != 'Windows' && steps.pnpm-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: ${{ steps.pnpm-binary.outputs.cache-primary-key }}
+
     # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
+    # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
     - name: Restore node_modules
       id: node-modules
       if: ${{ runner.os != 'Windows' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
-        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.resolve.outputs.pnpm-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-
 
     # setup-node downloads every version the runner image doesn't ship.
     - name: Restore Node.js
@@ -92,19 +127,10 @@ runs:
         path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
         key: ${{ runner.os }}-${{ runner.arch }}-node-binary-${{ steps.resolve.outputs.node-exact }}
 
-    - name: Setup Node.js (via input)
-      if: ${{ inputs.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        node-version: ${{ inputs.node-version }}
-        package-manager-cache: false
-        registry-url: 'https://registry.npmjs.org'
-
-    - name: Setup Node.js (via .nvmrc)
-      if: ${{ !inputs.node-version }}
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with:
-        node-version-file: '.nvmrc'
+        node-version: ${{ steps.resolve.outputs.node-version }}
         package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
 

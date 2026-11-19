@@ -25,15 +25,10 @@ jobs:
     timeout-minutes: 5
 
     permissions:
-      contents: write # required to create releases and tags
-      pull-requests: write # required to create and update release PRs
+      contents: read # the app token, not GITHUB_TOKEN, does the writing
 
+    # release-please works through the API, so there is nothing to check out or commit locally.
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       - name: Setup release helper
         id: release-helper
         uses: $/setup-github-app-user-bot
@@ -41,16 +36,8 @@ jobs:
           app-id: ${{ vars.RELEASE_HELPER_APP_ID }}
           private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
 
-      - name: Configure git user for GitHub App
-        run: |
-          git config --global user.name "${BOT_NAME}"
-          git config --global user.email "${BOT_EMAIL}"
-        env:
-          BOT_NAME: ${{ steps.release-helper.outputs.bot-name }}
-          BOT_EMAIL: ${{ steps.release-helper.outputs.bot-email }}
-
       - name: Release please
-        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.release-helper.outputs.token }}
           config-file: release-please-config.json
