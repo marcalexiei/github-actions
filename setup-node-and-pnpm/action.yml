@@ -3,7 +3,7 @@ description: |
   This is a composite GitHub Action that:
   - Sets up pnpm package manager
   - Configures Node.js environment
-  - Installs project dependencies, caching node_modules and the Node.js binary
+  - Installs project dependencies, caching pnpm, the Node.js binary and node_modules
 
 inputs:
   node-version:
@@ -21,9 +21,13 @@ runs:
   using: composite
 
   steps:
-    - name: Validate packageManager in package.json
-      id: package-manager
+    - name: Resolve versions
+      id: versions
       shell: bash
+      env:
+        NODE_VERSION: ${{ inputs.node-version }}
+        # Pull requests can read the default branch's caches, but not each other's.
+        SAVE: ${{ inputs.save-cache == 'true' && github.ref_name == github.event.repository.default_branch }}
       run: |
         if [ ! -f package.json ]; then
           echo "::error::package.json was not found in the repository root. Run actions/checkout before this action."
@@ -41,24 +45,52 @@ runs:
             exit 1
             ;;
         esac
-        echo "version=${pm%%+*}" >> "$GITHUB_OUTPUT"
+        pnpm="${pm%%+*}"
 
-    # pnpm/action-setup downloads pnpm twice per run: its bundled version, then the packageManager one.
-    - name: Restore pnpm
-      id: pnpm-binary
-      if: ${{ runner.os != 'Windows' }}
+        node="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
+        node="${node#v}"
+        # A range would pin the cached binary to whatever patch was saved first.
+        [[ "$node" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && exact="$node" || exact=''
+        # The runner image already ships it, and finds it faster than a cache restores it.
+        [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
+
+        # Not pnpm on Windows, where pnpm/action-setup lays it out differently.
+        key="$RUNNER_OS-$RUNNER_ARCH-tools"
+        paths=''
+        if [ "$RUNNER_OS" != Windows ]; then
+          key+="-$pnpm"
+          paths="$HOME/setup-pnpm"
+        fi
+        if [ -n "$exact" ]; then
+          key+="-node$exact"
+          paths+="${paths:+$'\n'}$RUNNER_TOOL_CACHE/node/$exact"
+        fi
+
+        {
+          echo "pnpm=$pnpm"
+          echo "node=$node"
+          echo "save=$SAVE"
+          echo "tools-key=$key"
+          [ -z "$paths" ] || printf 'tools-paths<<EOF\n%s\nEOF\n' "$paths"
+        } >> "$GITHUB_OUTPUT"
+
+    # One entry for pnpm and Node.js: a restore's lookup can cost as much as its download.
+    # pnpm/action-setup downloads pnpm twice per run, and setup-node every version the image lacks.
+    - name: Restore pnpm and Node.js
+      id: tools
+      if: ${{ steps.versions.outputs.tools-paths != '' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: ~/setup-pnpm
-        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-binary-${{ steps.package-manager.outputs.version }}
+        path: ${{ steps.versions.outputs.tools-paths }}
+        key: ${{ steps.versions.outputs.tools-key }}
 
     # Sets PATH and PNPM_HOME the way pnpm/action-setup does for its default `dest`.
     - name: Use the restored pnpm
       id: pnpm-restored
-      if: ${{ steps.pnpm-binary.outputs.cache-hit == 'true' }}
+      if: ${{ runner.os != 'Windows' && steps.tools.outputs.cache-hit == 'true' }}
       shell: bash
       env:
-        VERSION: ${{ steps.package-manager.outputs.version }}
+        VERSION: ${{ steps.versions.outputs.pnpm }}
       run: | # zizmor: ignore[github-env] -- fixed paths, and only the default branch saves this cache
         home="$HOME/setup-pnpm/node_modules/.bin"
         # A restore that does not run falls back to pnpm/action-setup.
@@ -76,36 +108,15 @@ runs:
       if: ${{ steps.pnpm-restored.outputs.ok != 'true' }}
       uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-    - name: Resolve cache keys and paths
+    - name: Resolve node_modules paths
       id: resolve
       shell: bash
-      env:
-        NODE_VERSION: ${{ inputs.node-version }}
-        # Pull requests can read the default branch's caches, but not each other's.
-        SAVE: ${{ inputs.save-cache == 'true' && github.ref_name == github.event.repository.default_branch }}
       run: |
-        version="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
-        version="${version#v}"
-        # A range would pin the cached binary to whatever patch was saved first.
-        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && exact="$version" || exact=''
-        # The runner image already ships it, and finds it faster than a cache restores it.
-        [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
         {
-          echo "node-version=$version"
-          echo "node-exact=$exact"
-          echo "save=$SAVE"
           echo 'node-modules<<EOF'
           pnpm ls -r --depth -1 --json | jq -r '.[].path + "/node_modules"'
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
-
-    # Before `pnpm install` adds packages to the store under PNPM_HOME.
-    - name: Save pnpm
-      if: ${{ runner.os != 'Windows' && steps.pnpm-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/setup-pnpm
-        key: ${{ steps.pnpm-binary.outputs.cache-primary-key }}
 
     # A hit skips `pnpm install`. Not on Windows: tar does not round-trip pnpm's junctions.
     # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
@@ -115,31 +126,23 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
-        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
-        restore-keys: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.resolve.outputs.node-version }}-${{ steps.package-manager.outputs.version }}-
-
-    # setup-node downloads every version the runner image doesn't ship.
-    - name: Restore Node.js
-      id: node-binary
-      if: ${{ steps.resolve.outputs.node-exact != '' }}
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
-        key: ${{ runner.os }}-${{ runner.arch }}-node-binary-${{ steps.resolve.outputs.node-exact }}
+        key: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.pnpm }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-node-modules-node${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.pnpm }}-
 
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        node-version: ${{ steps.resolve.outputs.node-version }}
+        node-version: ${{ steps.versions.outputs.node }}
         package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
 
-    - name: Save Node.js
-      if: ${{ steps.resolve.outputs.node-exact != '' && steps.node-binary.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
+    # Before `pnpm install` adds packages to the store under PNPM_HOME.
+    - name: Save pnpm and Node.js
+      if: ${{ steps.versions.outputs.tools-paths != '' && steps.tools.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: ${{ runner.tool_cache }}/node/${{ steps.resolve.outputs.node-exact }}
-        key: ${{ steps.node-binary.outputs.cache-primary-key }}
+        path: ${{ steps.versions.outputs.tools-paths }}
+        key: ${{ steps.versions.outputs.tools-key }}
 
     - name: Install Dependencies
       if: ${{ steps.node-modules.outputs.cache-hit != 'true' }}
@@ -148,7 +151,7 @@ runs:
 
     # Before any later step writes into node_modules (e.g. `.vite`).
     - name: Save node_modules
-      if: ${{ runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.resolve.outputs.save == 'true' }}
+      if: ${{ runner.os != 'Windows' && steps.node-modules.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.resolve.outputs.node-modules }}
