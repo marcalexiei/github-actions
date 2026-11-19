@@ -32,13 +32,11 @@ runs:
         FILES: ${{ inputs.files }}
         REPO: ${{ inputs.repository }}
       run: |
-        case "${TAG}" in
-          v[0-9]*.[0-9]*.[0-9]*) ;;
-          *)
-            echo "::error::${TAG} is not a vX.Y.Z release tag."
-            exit 1
-            ;;
-        esac
+        # Strict, since the tag lands in the sed script below.
+        if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::${TAG} is not a vX.Y.Z release tag."
+          exit 1
+        fi
 
         git fetch --depth=1 origin "refs/tags/${TAG}:refs/tags/${TAG}"
         sha="$(git rev-parse --verify "refs/tags/${TAG}^{commit}")"
