@@ -41,7 +41,8 @@ runs:
 
         # One entry for the Node.js binary and node_modules: a restore's lookup can cost as much as its download.
         # Not node_modules on Windows: tar does not round-trip pnpm's junctions.
-        key="$RUNNER_OS-$RUNNER_ARCH-deps-node$node-$pnpm"
+        # `setup-pnpm`: node_modules is tied to its store, which pnpm/setup keeps under ~/setup-pnpm.
+        key="$RUNNER_OS-$RUNNER_ARCH-deps-setup-pnpm-node$node-$pnpm"
         paths=''
         [ -n "$exact" ] && paths="$RUNNER_TOOL_CACHE/node/$exact"
         if [ "$RUNNER_OS" != Windows ]; then
