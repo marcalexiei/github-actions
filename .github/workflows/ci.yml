@@ -59,7 +59,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         # a pull request checks out its merge commit, whose first parent is the base branch
         run: |
-          if [ "${EVENT_NAME}" != pull_request ] || [ -n "$(git diff --name-only HEAD^1 HEAD -- .github)" ]; then
+          if [ "${EVENT_NAME}" != pull_request ] || [ -n "$(git diff --name-only HEAD^1 HEAD -- .github '*/action.yml')" ]; then
             echo "github=true" >> "${GITHUB_OUTPUT}"
           fi
       - name: Run zizmor
