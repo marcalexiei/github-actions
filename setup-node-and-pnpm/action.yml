@@ -70,7 +70,6 @@ runs:
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
     # pnpm 12 ships one native binary per platform, so it skips pnpm/action-setup's two installs.
-    # Not on Windows, whose paths this step does not handle.
     - name: Install pnpm
       id: pnpm
       shell: bash
@@ -82,6 +81,8 @@ runs:
           Linux-ARM64) platform=linux-arm64 ;;
           macOS-X64) platform=darwin-x64 ;;
           macOS-ARM64) platform=darwin-arm64 ;;
+          Windows-X64) platform=win32-x64 ext=.exe ;;
+          Windows-ARM64) platform=win32-arm64 ext=.exe ;;
           *) exit 0 ;;
         esac
         [ "${VERSION%%.*}" -ge 12 ] || exit 0
@@ -96,9 +97,10 @@ runs:
         fi
         dir="$RUNNER_TOOL_CACHE/pnpm/$VERSION/$platform"
         mkdir -p "$dir"
-        tar -xzf "$tgz" -C "$dir" --strip-components=1 package/pnpm
+        # From stdin: GNU tar reads the `D:` of a Windows path as a remote host.
+        tar -xzf - -C "$dir" --strip-components=1 "package/pnpm$ext" < "$tgz"
         # Like pnpm's own install: the binary acts on the name it runs as.
-        for name in pn pnpx pnx; do ln -f "$dir/pnpm" "$dir/$name"; done
+        for name in pn pnpx pnx; do ln -f "$dir/pnpm$ext" "$dir/$name$ext"; done
         echo "$dir" >> "$GITHUB_PATH"
         echo "PNPM_HOME=$dir" >> "$GITHUB_ENV"
         echo "installed=true" >> "$GITHUB_OUTPUT"
