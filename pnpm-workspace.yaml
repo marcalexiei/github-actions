@@ -6,3 +6,7 @@ minimumReleaseAgeExclude:
   - '@marcalexiei/oxlint-config'
 
 autoDedupe: true
+
+# Records autoDedupe in the lockfile, so installs that are not frozen do not resolve again.
+lockfile:
+  includeResolutionSettings: true
