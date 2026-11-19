@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.4](https://github.com/marcalexiei/github-actions/compare/v2.6.3...v2.6.4) (2026-11-19)
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** install pnpm with pnpm/setup ([#151](https://github.com/marcalexiei/github-actions/issues/151)) ([cb4e8d1](https://github.com/marcalexiei/github-actions/commit/cb4e8d107005b707a9534fc9034c33cb8b24d70f))
+
 ## [2.6.3](https://github.com/marcalexiei/github-actions/compare/v2.6.2...v2.6.3) (2026-11-19)
 
 
