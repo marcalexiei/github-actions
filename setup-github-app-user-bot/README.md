@@ -20,5 +20,3 @@
     BOT_NAME: ${{ steps.release-helper.outputs.bot-name }}
     BOT_EMAIL: ${{ steps.release-helper.outputs.bot-email }}
 ```
-
-`app-id` still works, but is deprecated in favour of `client-id`.
