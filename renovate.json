@@ -5,7 +5,7 @@
   "minimumReleaseAge": "1 day",
   "packageRules": [
     {
-      "matchFileNames": ["setup-node-and-pnpm/**", "setup-github-app-user-bot/**"],
+      "matchFileNames": ["*/action.yml"],
       "semanticCommitType": "feat"
     },
     {
