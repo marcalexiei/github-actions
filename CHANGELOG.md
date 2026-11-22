@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/marcalexiei/github-actions/compare/v3.0.0...v4.0.0) (2026-11-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* setup-github-app-user-bot is removed. Create the token with actions/create-github-app-token; no bot identity is needed when commits go through the API.
+
+### Features
+
+* remove setup-github-app-user-bot ([#164](https://github.com/marcalexiei/github-actions/issues/164)) ([6fee914](https://github.com/marcalexiei/github-actions/commit/6fee914e3ea2e329fba577159791eac6599248fa))
+
 ## [3.0.0](https://github.com/marcalexiei/github-actions/compare/v2.6.5...v3.0.0) (2026-11-22)
 
 
