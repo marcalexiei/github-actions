@@ -29,12 +29,14 @@ jobs:
 
     # release-please works through the API, so there is nothing to check out or commit locally.
     steps:
-      - name: Setup release helper
+      - name: Create release helper token
         id: release-helper
-        uses: $/setup-github-app-user-bot
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ vars.RELEASE_HELPER_APP_ID }}
           private-key: ${{ secrets.RELEASE_HELPER_PRIVATE_KEY }}
+          permission-contents: write # commits, tags and releases
+          permission-pull-requests: write # opens and labels the release PR
 
       - name: Release please
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
