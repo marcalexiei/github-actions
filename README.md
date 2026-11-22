@@ -13,3 +13,4 @@ Shared Github Actions utilities across marcalexiei account
 - [`setup-github-app-user-bot`](setup-github-app-user-bot/README.md): a GitHub App token, and the bot's name and email to commit as
 - [`pin-readme-version`](pin-readme-version/README.md): points the `uses:` lines in a README at the commit a release tag was cut from
 - [`check-needs`](check-needs/README.md): a gate job that fails unless every needed job succeeded, counting each matrix leg on its own
+- [`audit-github-actions`](audit-github-actions/README.md): runs zizmor and jactionlint, on a pull request only when the workflows changed
