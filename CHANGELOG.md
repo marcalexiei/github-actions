@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.0.0](https://github.com/marcalexiei/github-actions/compare/v2.6.5...v3.0.0) (2026-11-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **setup-github-app-user-bot:** `app-id` is removed. Pass the same value as `client-id`.
+
+### Features
+
+* **audit-github-actions:** add an action that runs zizmor and jactionlint ([#160](https://github.com/marcalexiei/github-actions/issues/160)) ([e40bcb4](https://github.com/marcalexiei/github-actions/commit/e40bcb435d226920323b074ebfea72f53c66c626))
+* **deps:** update actions/create-github-app-token action to v3.4.0 ([#115](https://github.com/marcalexiei/github-actions/issues/115)) ([5be191c](https://github.com/marcalexiei/github-actions/commit/5be191c1aa6f5bf6f4dcd19bb135334c23a2de4a))
+* **setup-github-app-user-bot:** rename the app-id input to client-id ([#159](https://github.com/marcalexiei/github-actions/issues/159)) ([b574af9](https://github.com/marcalexiei/github-actions/commit/b574af9e82fc734d2ca2ceda912ae61112ed7b62))
+
 ## [2.6.5](https://github.com/marcalexiei/github-actions/compare/v2.6.4...v2.6.5) (2026-11-19)
 
 
