@@ -1,0 +1,45 @@
+name: Audit GitHub Actions
+description: Checks out the repository and runs zizmor and jactionlint. On a pull request, only when the given paths changed.
+
+inputs:
+  paths:
+    description: 'Space-separated pathspecs whose changes trigger the audit on a pull request'
+    default: '.github'
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+        fetch-depth: 2 # the parent the changed-paths step diffs against
+
+    - name: Check changed paths
+      id: changes
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        PATHS: ${{ inputs.paths }}
+      # A pull request checks out its merge commit, whose first parent is the base branch.
+      run: |
+        set -f # pathspecs like `*/action.yml` are for git, not the shell
+        # shellcheck disable=SC2086 # `paths` holds several pathspecs
+        if [ "${EVENT_NAME}" != pull_request ] || [ -n "$(git diff --name-only HEAD^1 HEAD -- ${PATHS})" ]; then
+          echo "audit=true" >> "${GITHUB_OUTPUT}"
+        fi
+
+    - name: Run zizmor
+      if: ${{ steps.changes.outputs.audit == 'true' }}
+      uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+      with:
+        advanced-security: false
+        annotations: true
+
+    - name: Run jactionlint
+      # Still runs when zizmor fails, so one run reports both.
+      if: ${{ !cancelled() && steps.changes.outputs.audit == 'true' }}
+      uses: jdx/jactionlint@72c00452809bcca05b8bc12acdcf15dd7a9c1c5e # v2.6.0
+      with:
+        online: strict # a lookup it cannot make fails the job instead of being skipped
