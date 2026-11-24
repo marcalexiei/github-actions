@@ -41,8 +41,7 @@ runs:
 
         # One entry for the Node.js binary and node_modules: a restore's lookup can cost as much as its download.
         # Not node_modules on Windows: tar does not round-trip pnpm's junctions.
-        # `setup-pnpm`: node_modules is tied to its store, which pnpm/setup keeps under ~/setup-pnpm.
-        key="$RUNNER_OS-$RUNNER_ARCH-deps-setup-pnpm-node$node-$pnpm"
+        key="$RUNNER_OS-$RUNNER_ARCH-deps-node$node-$pnpm"
         paths=''
         [ -n "$exact" ] && paths="$RUNNER_TOOL_CACHE/node/$exact"
         if [ "$RUNNER_OS" != Windows ]; then
@@ -70,12 +69,12 @@ runs:
         key: ${{ steps.versions.outputs.deps-key }}
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
+    # Not pnpm/setup: it saves a cache in every job, which parallel jobs race for.
     - name: Install pnpm
-      uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
-      with:
-        version: ${{ steps.versions.outputs.pnpm-version }}
-        node-version-file: false
-        install: false
+      shell: bash
+      env:
+        VERSION: ${{ steps.versions.outputs.pnpm-version }}
+      run: bash "$GITHUB_ACTION_PATH/install-pnpm.sh"
 
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

@@ -66,6 +66,14 @@ jobs:
       - name: Run each pnpm name
         run: for name in pnpm pn pnpx pnx; do "$name" --version; done
 
+      # Native addons build with the node-gyp pnpm bundles, which it puts on a script's PATH.
+      - name: Run node-gyp from a script
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          echo '{"scripts":{"gyp":"node-gyp --version"}}' > package.json
+          pnpm run gyp
+
   github-actions-audit:
     name: GitHub Actions audit
     runs-on: ubuntu-26.04
