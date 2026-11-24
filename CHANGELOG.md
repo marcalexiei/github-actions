@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/marcalexiei/github-actions/compare/v4.0.0...v4.0.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **setup-node-and-pnpm:** download pnpm directly instead of through pnpm/setup ([#167](https://github.com/marcalexiei/github-actions/issues/167)) ([85e4fa7](https://github.com/marcalexiei/github-actions/commit/85e4fa76d7b9d12fae9c52ab7a6791e21b70accc))
+
 ## [4.0.0](https://github.com/marcalexiei/github-actions/compare/v3.0.0...v4.0.0) (2026-11-22)
 
 
