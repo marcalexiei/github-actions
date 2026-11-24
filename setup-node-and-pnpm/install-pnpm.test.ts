@@ -111,7 +111,14 @@ function install(options: Options): Result {
 test('rejects pnpm older than 12 before downloading', () => {
   const result = install({ version: '11.9.0' });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /pnpm 12 or later is required \(got: 11\.9\.0\)/);
+  assert.match(result.stdout, /pnpm version, 12 or later, is required \(got: 11\.9\.0\)/);
+  assert.deepEqual(result.urls, []);
+});
+
+test('rejects a version that is not a number before downloading', () => {
+  const result = install({ version: 'next' });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /An exact pnpm version, 12 or later, is required \(got: next\)/);
   assert.deepEqual(result.urls, []);
 });
 
