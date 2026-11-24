@@ -20,7 +20,7 @@ Usage example:
 
 pnpm version should be set in the `packageManager` field inside `package.json`.
 
-pnpm 12 or later is required. `pnpm/setup` installs its native binary, checked against npm's signature.
+pnpm 12 or later is required. Its native binary is downloaded from the npm registry and checked against npm's signature.
 
 `node_modules` and the Node.js binary are cached together.
 When `node_modules` is restored, `pnpm install` is skipped (and so are the install lifecycle scripts) and the `cache-hit` output is `'true'`.
