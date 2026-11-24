@@ -12,7 +12,7 @@ github-actions-audit:
     contents: read # required to check out the repository
   steps:
     - name: Audit GitHub Actions
-      uses: marcalexiei/github-actions/audit-github-actions@de88757952eee556973df500ac406221ef30ca9a # v4.0.0
+      uses: marcalexiei/github-actions/audit-github-actions@2434e1162adfdad5c72ba27c9a8fcc3ad232feb6 # v4.0.1
 ```
 
 - Give it a job of its own: it checks out the repository itself, which wipes what earlier steps left in the workspace.
