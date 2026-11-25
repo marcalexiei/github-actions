@@ -1,5 +1,5 @@
 name: Setup Node.js + PNPM and install Dependencies
-description: Sets up pnpm and Node.js, and installs the dependencies, caching the Node.js binary and `node_modules`.
+description: Sets up pnpm and Node.js, and installs the dependencies, caching `node_modules`.
 
 inputs:
   node-version:
@@ -34,18 +34,12 @@ runs:
 
         node="${NODE_VERSION:-$(tr -d '[:space:]' < .nvmrc)}"
         node="${node#v}"
-        # A range would pin the cached binary to whatever patch was saved first.
-        [[ "$node" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && exact="$node" || exact=''
-        # The runner image already ships it, and finds it faster than a cache restores it.
-        [[ -d "$RUNNER_TOOL_CACHE/node/$exact" ]] && exact=''
 
-        # One entry for the Node.js binary and node_modules: a restore's lookup can cost as much as its download.
-        # Not node_modules on Windows: tar does not round-trip pnpm's junctions.
+        # Not on Windows: tar does not round-trip pnpm's junctions.
         key="$RUNNER_OS-$RUNNER_ARCH-deps-node$node-$pnpm"
         paths=''
-        [ -n "$exact" ] && paths="$RUNNER_TOOL_CACHE/node/$exact"
         if [ "$RUNNER_OS" != Windows ]; then
-          paths+="${paths:+$'\n'}$(awk -f "$GITHUB_ACTION_PATH/importers.awk" pnpm-lock.yaml | sort -u)"
+          paths="$(awk -f "$GITHUB_ACTION_PATH/importers.awk" pnpm-lock.yaml | sort -u)"
           echo "deps-restore-key=$key-" >> "$GITHUB_OUTPUT"
           key+="-$(cat pnpm-lock.yaml pnpm-workspace.yaml 2>/dev/null | openssl dgst -sha256 -r | cut -c1-64)"
         fi
@@ -58,18 +52,12 @@ runs:
           [ -z "$paths" ] || printf 'deps-paths<<EOF\n%s\nEOF\n' "$paths"
         } >> "$GITHUB_OUTPUT"
 
-        # In the background, while the cache restores: `Install pnpm` waits for it, and applies its PATH and env.
-        (
-          status=0
-          VERSION="${pnpm#pnpm@}" GITHUB_PATH="$RUNNER_TEMP/pnpm.path" GITHUB_ENV="$RUNNER_TEMP/pnpm.env" \
-            bash "$GITHUB_ACTION_PATH/install-pnpm.sh" > "$RUNNER_TEMP/pnpm.log" 2>&1 || status=$?
-          echo "$status" > "$RUNNER_TEMP/pnpm.status"
-        ) > /dev/null 2>&1 &
-        echo "$!" > "$RUNNER_TEMP/pnpm.pid"
+        # While the cache restores: `Install Node.js and pnpm` waits for them.
+        VERSION="${pnpm#pnpm@}" NODE_SPEC="$node" bash "$GITHUB_ACTION_PATH/start-installs.sh"
 
     # A hit skips `pnpm install`.
     # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
-    - name: Restore Node.js and node_modules
+    - name: Restore node_modules
       id: deps
       if: ${{ steps.versions.outputs.deps-paths != '' }}
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -78,19 +66,23 @@ runs:
         key: ${{ steps.versions.outputs.deps-key }}
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with:
-        node-version: ${{ steps.versions.outputs.node }}
-        package-manager-cache: false
-        registry-url: 'https://registry.npmjs.org'
-
     # Not pnpm/setup: it saves a cache in every job, which parallel jobs race for.
-    - name: Install pnpm
+    # Node.js too: actions/setup-node re-downloads a range's latest release on every run, and copies what it extracts.
+    - name: Install Node.js and pnpm
+      id: installs
       shell: bash
       env:
         VERSION: ${{ steps.versions.outputs.pnpm-version }}
-      run: bash "$GITHUB_ACTION_PATH/wait-for-pnpm.sh"
+        NODE_SPEC: ${{ steps.versions.outputs.node }}
+      run: bash "$GITHUB_ACTION_PATH/wait-for-installs.sh"
+
+    # Finds Node.js in the tool cache; still sets the registry up for publishing.
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ steps.installs.outputs.node-version }}
+        package-manager-cache: false
+        registry-url: 'https://registry.npmjs.org'
 
     - name: Install Dependencies
       if: ${{ runner.os == 'Windows' || steps.deps.outputs.cache-hit != 'true' }}
@@ -98,7 +90,7 @@ runs:
       run: pnpm install --frozen-lockfile
 
     # Before any later step writes into node_modules (e.g. `.vite`).
-    - name: Save Node.js and node_modules
+    - name: Save node_modules
       if: ${{ steps.versions.outputs.deps-paths != '' && steps.deps.outputs.cache-hit != 'true' && steps.versions.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
