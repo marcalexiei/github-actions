@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.2](https://github.com/marcalexiei/github-actions/compare/v4.0.1...v4.0.2) (2026-11-25)
+
+
+### Performance Improvements
+
+* **setup-node-and-pnpm:** download Node.js and pnpm while node_modules restores ([#170](https://github.com/marcalexiei/github-actions/issues/170)) ([c7f438f](https://github.com/marcalexiei/github-actions/commit/c7f438fe35ef52a240bdbee0ba8105b223eb696d))
+
 ## [4.0.1](https://github.com/marcalexiei/github-actions/compare/v4.0.0...v4.0.1) (2026-11-24)
 
 
