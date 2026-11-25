@@ -60,9 +60,16 @@ wait "$dist"
 dir="$RUNNER_TOOL_CACHE/pnpm/$VERSION/$platform"
 # `bin`: where `pnpm add -g` links, which refuses to run unless it is on PATH.
 mkdir -p "$dir/bin"
-# From stdin: GNU tar reads the `D:` of a Windows path as a remote host.
-tar -xzf - -C "$dir" --strip-components=1 "package/pnpm$ext" < "$RUNNER_TEMP/pnpm.tgz"
-tar -xzf - -C "$dir" --strip-components=1 package/dist < "$RUNNER_TEMP/pnpm-dist.tgz"
+untar() {
+  # Windows' own tar: Git Bash's takes 1.6s over the binary, and reads a path's `D:` as a remote host.
+  if [ "$RUNNER_OS" = Windows ]; then
+    "$(cygpath "$SYSTEMROOT")/System32/tar.exe" -xzf "$(cygpath -w "$1")" -C "$(cygpath -w "$dir")" --strip-components 1 "$2"
+    return
+  fi
+  tar -xzf "$1" -C "$dir" --strip-components=1 "$2"
+}
+untar "$RUNNER_TEMP/pnpm.tgz" "package/pnpm$ext"
+untar "$RUNNER_TEMP/pnpm-dist.tgz" package/dist
 # Like pnpm's own install: the binary acts on the name it runs as.
 for name in pn pnpx pnx; do ln -f "$dir/pnpm$ext" "$dir/$name$ext"; done
 printf '%s\n' "$dir" "$dir/bin" >> "$GITHUB_PATH"
