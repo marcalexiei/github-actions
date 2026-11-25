@@ -27,6 +27,7 @@ writeFileSync(
   `#!/usr/bin/env bash
 url="\${*: -1}"
 echo "$url" >> "$CURL_LOG"
+echo "$*" >> "$CURL_CALLS"
 prev=''; for arg in "$@"; do [ "$prev" = -o ] && out="$arg"; prev="$arg"; done
 case "$url" in
   *.tgz) cp "$FAKE_TGZ" "$out" ;;
@@ -61,6 +62,8 @@ interface Result {
   stdout: string;
   /** Every URL the script fetched, in order. */
   urls: Array<string>;
+  /** Each curl call's arguments, one line per call. */
+  calls: Array<string>;
   installed: boolean;
 }
 
@@ -95,15 +98,18 @@ function install(options: Options): Result {
       GITHUB_PATH: path.join(work, 'path'),
       GITHUB_ENV: path.join(work, 'env'),
       CURL_LOG: path.join(work, 'curl.log'),
+      CURL_CALLS: path.join(work, 'curl-calls.log'),
       FAKE_META: meta,
       FAKE_TGZ: tgz,
     },
   });
   const log = path.join(work, 'curl.log');
+  const calls = path.join(work, 'curl-calls.log');
   return {
     status: result.status,
     stdout: result.stdout,
     urls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [],
+    calls: existsSync(calls) ? readFileSync(calls, 'utf8').trim().split('\n') : [],
     installed: existsSync(path.join(work, 'tool', 'pnpm')),
   };
 }
@@ -112,6 +118,13 @@ test('rejects pnpm older than 12 before downloading', () => {
   const result = install({ version: '11.9.0' });
   assert.equal(result.status, 1);
   assert.match(result.stdout, /pnpm version, 12 or later, is required \(got: 11\.9\.0\)/);
+  assert.deepEqual(result.urls, []);
+});
+
+test('rejects a version with more after it before downloading', () => {
+  const result = install({ version: '12.21.0\nPATH=/tmp' });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /An exact pnpm version, 12 or later, is required/);
   assert.deepEqual(result.urls, []);
 });
 
@@ -129,14 +142,16 @@ test('rejects a platform pnpm ships no binary for', () => {
 });
 
 test('picks the musl binary when ldd is musl', () => {
-  assert.deepEqual(install({ libc: 'musl' }).urls, [
+  assert.deepEqual(install({ libc: 'musl' }).urls.toSorted(), [
     'https://registry.npmjs.org/@pnpm/exe.linux-x64-musl/12.21.0',
+    'https://registry.npmjs.org/@pnpm/exe/12.21.0',
   ]);
 });
 
 test('picks the glibc binary when ldd is glibc', () => {
-  assert.deepEqual(install({ libc: 'glibc' }).urls, [
+  assert.deepEqual(install({ libc: 'glibc' }).urls.toSorted(), [
     'https://registry.npmjs.org/@pnpm/exe.linux-x64/12.21.0',
+    'https://registry.npmjs.org/@pnpm/exe/12.21.0',
   ]);
 });
 
@@ -173,4 +188,12 @@ test('rejects metadata without a signature from the pinned key', () => {
   assert.equal(result.status, 1);
   assert.match(result.stdout, /does not carry npm's signature/);
   assert.equal(result.installed, false);
+});
+
+test('aborts a stalled transfer rather than waiting on it', () => {
+  const result = install({});
+  assert.equal(result.calls.length, 2);
+  for (const call of result.calls) {
+    assert.match(call, /--connect-timeout \d+ --speed-limit \d+ --speed-time \d+/);
+  }
 });
