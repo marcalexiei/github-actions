@@ -11,7 +11,7 @@ It points the `uses:` lines in a README at the commit the release tag was cut fr
     persist-credentials: false
 
 - name: Pin the examples
-  uses: marcalexiei/github-actions/pin-readme-version@2434e1162adfdad5c72ba27c9a8fcc3ad232feb6 # v4.0.1
+  uses: marcalexiei/github-actions/pin-readme-version@2c28f768b03ce332a96804ae076f15c84f239684 # v4.0.2
   with:
     tag: ${{ github.event.release.tag_name }}
 ```
