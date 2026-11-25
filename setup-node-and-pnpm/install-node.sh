@@ -2,8 +2,7 @@
 # Installs Node.js $NODE_SPEC into the runner's tool cache, where actions/setup-node finds it, checked against nodejs.org's SHASUMS256.txt.
 set -euo pipefail
 
-# A stalled transfer aborts, which --retry retries, rather than hanging the job.
-curl_args=(-fsSL --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30)
+source "$(dirname "${BASH_SOURCE[0]}")/http-get.sh"
 
 finish() {
   echo "node-version=$1" >> "$GITHUB_OUTPUT"
@@ -19,8 +18,9 @@ fall_back() {
 version="${NODE_SPEC#v}"
 # A major or minor resolves to its latest release; any other range is left to actions/setup-node.
 if [[ "$version" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  index="$(curl "${curl_args[@]}" https://nodejs.org/dist/index.json)" || fall_back "Could not fetch nodejs.org's index.json"
-  version="$(jq -r --arg prefix "v$version." 'first(.[] | select(.version | startswith($prefix))) | .version | ltrimstr("v")' <<< "$index")"
+  index="$(http_get https://nodejs.org/dist/index.json)" || fall_back "Could not fetch nodejs.org's index.json"
+  version="$(jq -r --arg prefix "v$version." 'first(.[] | select(.version | startswith($prefix))) | .version | ltrimstr("v")' <<< "$index")" \
+    || fall_back "nodejs.org's index.json is not JSON"
 fi
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then finish "$NODE_SPEC"; fi
 
@@ -40,13 +40,15 @@ if [ -f "$dir.complete" ]; then finish "$version"; fi
 
 file="node-v$version-$dist.$ext"
 url="https://nodejs.org/dist/v$version"
-curl "${curl_args[@]}" -o "$RUNNER_TEMP/$file" "$url/$file" &
+# Its own folder: a second install of the same version would write the same names.
+tmp="$(mktemp -d "$RUNNER_TEMP/node.XXXXXX")"
+http_get -o "$tmp/$file" "$url/$file" &
 download=$!
-sums="$(curl "${curl_args[@]}" "$url/SHASUMS256.txt")" || sums=''
+sums="$(http_get "$url/SHASUMS256.txt")" || sums=''
 wait "$download" || fall_back "Could not download $file from nodejs.org"
 [ -n "$sums" ] || fall_back "Could not fetch SHASUMS256.txt from nodejs.org"
 expected="$(awk -v file="$file" '$2 == file { print $1 }' <<< "$sums")"
-if [ -z "$expected" ] || [ "$(openssl dgst -sha256 -r "$RUNNER_TEMP/$file" | cut -c1-64)" != "$expected" ]; then
+if [ -z "$expected" ] || [ "$(openssl dgst -sha256 -r "$tmp/$file" | cut -c1-64)" != "$expected" ]; then
   echo "::error::$file does not match the checksum in nodejs.org's SHASUMS256.txt."
   exit 1
 fi
@@ -54,9 +56,9 @@ fi
 mkdir -p "$dir"
 if [ "$ext" = zip ]; then
   # Windows' own tar reads zip files; Git Bash's GNU tar does not.
-  "$(cygpath "$SYSTEMROOT")/System32/tar.exe" -xf "$(cygpath -w "$RUNNER_TEMP/$file")" -C "$(cygpath -w "$dir")" --strip-components 1
+  "$(cygpath "$SYSTEMROOT")/System32/tar.exe" -xf "$(cygpath -w "$tmp/$file")" -C "$(cygpath -w "$dir")" --strip-components 1
 else
-  tar -xzf "$RUNNER_TEMP/$file" -C "$dir" --strip-components 1
+  tar -xzf "$tmp/$file" -C "$dir" --strip-components 1
 fi
 touch "$dir.complete"
 finish "$version"

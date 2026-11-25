@@ -27,6 +27,7 @@ writeFileSync(
   `#!/usr/bin/env bash
 url="\${*: -1}"
 echo "$url" >> "$CURL_LOG"
+echo "$*" >> "$CURL_CALLS"
 [ -n "$FAKE_FAIL" ] && [[ "$url" == *"$FAKE_FAIL" ]] && exit 22
 prev=''; for arg in "$@"; do [ "$prev" = -o ] && out="$arg"; prev="$arg"; done
 case "$url" in
@@ -70,6 +71,8 @@ interface Options {
   installed?: Array<string>;
   /** The end of a URL nodejs.org fails to serve. */
   fail?: string;
+  /** What nodejs.org serves as index.json; defaults to `index`. */
+  indexBody?: string;
 }
 
 interface Result {
@@ -79,6 +82,8 @@ interface Result {
   output: string;
   /** Every URL the script fetched, in order. */
   urls: Array<string>;
+  /** Each curl call's arguments, one line per call. */
+  calls: Array<string>;
   toolCache: string;
   temp: string;
   /** The arguments Windows' tar.exe got, one per line. */
@@ -96,7 +101,7 @@ function install(options: Options): Result {
     mkdirSync(path.join(toolCache, 'node', version, 'arm64'), { recursive: true });
     writeFileSync(path.join(toolCache, 'node', version, 'arm64.complete'), '');
   }
-  writeFileSync(path.join(work, 'index.json'), JSON.stringify(index));
+  writeFileSync(path.join(work, 'index.json'), options.indexBody ?? JSON.stringify(index));
   const sums = options.sums ?? [`${sha256}  node-v26.13.1-darwin-arm64.tar.gz`];
   writeFileSync(path.join(work, 'SHASUMS256.txt'), `${sums.join('\n')}\n`);
 
@@ -111,6 +116,7 @@ function install(options: Options): Result {
       RUNNER_TOOL_CACHE: toolCache,
       GITHUB_OUTPUT: path.join(work, 'output'),
       CURL_LOG: path.join(work, 'curl.log'),
+      CURL_CALLS: path.join(work, 'curl-calls.log'),
       FAKE_INDEX: path.join(work, 'index.json'),
       FAKE_SUMS: path.join(work, 'SHASUMS256.txt'),
       FAKE_ARCHIVE: archive,
@@ -128,6 +134,7 @@ function install(options: Options): Result {
     stdout: result.stdout,
     output: read('output'),
     urls: read('curl.log').trim().split('\n').filter(Boolean),
+    calls: read('curl-calls.log').trim().split('\n').filter(Boolean),
     toolCache,
     temp: path.join(work, 'temp'),
     tar: read('tar.log'),
@@ -209,14 +216,11 @@ test("unpacks the zip with Windows' own tar on Windows", () => {
   });
   assert.equal(result.status, 0);
   const installed = path.join(result.toolCache, 'node', '26.13.1', 'x64');
-  assert.deepEqual(result.tar.trim().split('\n'), [
-    '-xf',
-    path.join(result.temp, 'node-v26.13.1-win-x64.zip'),
-    '-C',
-    installed,
-    '--strip-components',
-    '1',
-  ]);
+  const [flag, zip, ...rest] = result.tar.trim().split('\n');
+  assert.equal(flag, '-xf');
+  assert.equal(path.dirname(path.dirname(zip ?? '')), result.temp);
+  assert.equal(path.basename(zip ?? ''), 'node-v26.13.1-win-x64.zip');
+  assert.deepEqual(rest, ['-C', installed, '--strip-components', '1']);
   assert.equal(readFileSync(path.join(installed, 'node.exe'), 'utf8'), 'not node\n');
   assert.ok(existsSync(`${installed}.complete`));
 });
@@ -237,3 +241,18 @@ for (const [what, fail] of [
     );
   });
 }
+
+test('leaves the install to actions/setup-node when index.json is not JSON', () => {
+  const result = install({ spec: '26', indexBody: '<html>Blocked</html>' });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /::warning::nodejs\.org's index\.json is not JSON/);
+  assert.equal(result.output, 'node-version=26\n');
+});
+
+test('aborts a stalled transfer rather than waiting on it', () => {
+  const result = install({ spec: '26' });
+  assert.equal(result.calls.length, 3);
+  for (const call of result.calls) {
+    assert.match(call, /--connect-timeout \d+ --speed-limit \d+ --speed-time \d+/);
+  }
+});

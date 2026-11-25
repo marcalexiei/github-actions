@@ -4,6 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -36,6 +37,12 @@ interface Result {
   output: string;
 }
 
+/** The work folder and the action folder. */
+interface Folders {
+  work: string;
+  action: string;
+}
+
 let run = 0;
 const others: Array<ChildProcess> = [];
 after(() => {
@@ -44,17 +51,14 @@ after(() => {
   }
 });
 
-/**
- * Lays out an action folder with stub installs taking `seconds`, which write `<task>` lines to their step's files.
- * @returns the work folder and the action folder.
- */
-function setup(seconds = 0): { work: string; action: string } {
+/** Lays out an action folder with stub installs taking `seconds`, which write `<task>` lines to their step's files. */
+function setup(seconds = 0): Folders {
   run += 1;
   const work = path.join(dir, `run-${run}`);
   const action = path.join(work, 'action');
   mkdirSync(path.join(work, 'temp'), { recursive: true });
   mkdirSync(action);
-  for (const script of ['start-installs.sh', 'wait-for-installs.sh']) {
+  for (const script of ['start-installs.sh', 'background-install.sh', 'wait-for-installs.sh']) {
     copyFileSync(path.join(import.meta.dirname, script), path.join(action, script));
   }
   for (const task of tasks) {
@@ -72,7 +76,7 @@ echo "/${task}" >> "$GITHUB_PATH"; echo "${task.toUpperCase()}=1" >> "$GITHUB_EN
   return { work, action };
 }
 
-function runScript(work: string, action: string, script: string): Result {
+function runScript({ work, action }: Folders, script: string, bin?: string): Result {
   for (const file of ['path', 'env', 'output']) {
     writeFileSync(path.join(work, file), '');
   }
@@ -81,7 +85,7 @@ function runScript(work: string, action: string, script: string): Result {
     // Waiting on the wrong process would otherwise pass, only slowly.
     timeout: 10_000,
     env: {
-      PATH: process.env['PATH'],
+      PATH: [bin, process.env['PATH']].filter(Boolean).join(path.delimiter),
       RUNNER_TEMP: path.join(work, 'temp'),
       GITHUB_ACTION_PATH: action,
       GITHUB_PATH: path.join(work, 'path'),
@@ -100,7 +104,7 @@ function runScript(work: string, action: string, script: string): Result {
 }
 
 /** Leaves each install's files as start-installs.sh's background process would. */
-function wait(finished: Record<Task, Finished>): Result {
+function wait(finished: Record<Task, Finished>, bin?: string): Result {
   const { work, action } = setup();
   for (const task of tasks) {
     const out = path.join(work, 'temp', `install-${task}`);
@@ -110,10 +114,14 @@ function wait(finished: Record<Task, Finished>): Result {
     writeFileSync(path.join(out, 'output'), `${task}=bg\n`);
     const state = finished[task];
     if (state === 'running') {
-      // Named as start-installs.sh's own background process is.
+      // Named as start-installs.sh's background process is.
       const child = spawn(
         'bash',
-        ['-c', `sleep 0.5; echo 'finished ${task}' > log; echo 0 > status`, 'start-installs.sh'],
+        [
+          '-c',
+          `sleep 0.5; echo 'finished ${task}' > log; echo 0 > status`,
+          'background-install.sh',
+        ],
         {
           cwd: out,
           detached: true,
@@ -135,7 +143,7 @@ function wait(finished: Record<Task, Finished>): Result {
       }
     }
   }
-  return runScript(work, action, 'wait-for-installs.sh');
+  return runScript({ work, action }, 'wait-for-installs.sh', bin);
 }
 
 const ok: Finished = { status: 0, log: 'ok\n' };
@@ -187,12 +195,26 @@ test('installs in its own step when the pid now belongs to another process', () 
   assert.equal(result.path, '/pnpm\n/bg-node\n');
 });
 
+test(
+  'trusts a live pid when no command line can be read',
+  { skip: existsSync('/proc') && 'reads /proc here, never ps' },
+  () => {
+    const bin = path.join(dir, 'no-ps');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(path.join(bin, 'ps'), '#!/usr/bin/env bash\nexit 1\n');
+    chmodSync(path.join(bin, 'ps'), 0o755);
+    const result = wait({ pnpm: 'running', node: ok }, bin);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /finished pnpm/);
+  },
+);
+
 test('start-installs.sh runs each install in the background, for wait-for-installs.sh to apply', () => {
   const { work, action } = setup();
-  const started = runScript(work, action, 'start-installs.sh');
+  const started = runScript({ work, action }, 'start-installs.sh');
   assert.equal(started.status, 0);
   assert.equal(started.path, '', 'the starting step gets nothing');
-  const result = runScript(work, action, 'wait-for-installs.sh');
+  const result = runScript({ work, action }, 'wait-for-installs.sh');
   assert.equal(result.status, 0);
   assert.equal(result.stdout, 'installing pnpm\ninstalling node\n');
   assert.equal(result.path, '/pnpm\n/node\n');
@@ -208,8 +230,8 @@ test('start-installs.sh drops what an earlier run of the action left', () => {
   writeFileSync(path.join(stale, 'status'), '0');
   writeFileSync(path.join(stale, 'log'), 'stale\n');
   writeFileSync(path.join(stale, 'output'), 'pnpm=stale\n');
-  runScript(work, action, 'start-installs.sh');
-  const result = runScript(work, action, 'wait-for-installs.sh');
+  runScript({ work, action }, 'start-installs.sh');
+  const result = runScript({ work, action }, 'wait-for-installs.sh');
   assert.equal(result.stdout, 'installing pnpm\ninstalling node\n');
   assert.equal(result.output, 'pnpm=done\nnode=done\n');
 });

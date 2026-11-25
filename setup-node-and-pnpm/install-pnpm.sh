@@ -27,16 +27,17 @@ if [ "$RUNNER_OS" = Linux ] && [[ "$(ldd --version 2>&1 || true)" == *musl* ]]; 
 # npm's signing key, from registry.npmjs.org/-/npm/v1/keys: pinned, so the registry cannot vouch for itself.
 keyid='SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U'
 key='MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY6Ya7W++7aUPzvMTrezH6Ycx3c+HOKYCcNGybJZSCJq/fd7Qa8uuAKtdIkUQtQiEKERhAmE5lMMJhP8OkDOa2g=='
-printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$key" > "$RUNNER_TEMP/npm-key.pem"
+# Its own folder: a second install of the same version would write the same names.
+tmp="$(mktemp -d "$RUNNER_TEMP/pnpm.XXXXXX")"
+printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$key" > "$tmp/npm-key.pem"
 
-# A stalled transfer aborts, which --retry retries, rather than hanging the job.
-curl_args=(-fsSL --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30)
+source "$(dirname "${BASH_SOURCE[0]}")/http-get.sh"
 
 # Downloads $1@$VERSION to $2, checked against the integrity npm signed.
 fetch() {
   local package="$1" tgz="$2" meta integrity
-  meta="$(curl "${curl_args[@]}" "https://registry.npmjs.org/$package/$VERSION")"
-  curl "${curl_args[@]}" -o "$tgz" "$(jq -r .dist.tarball <<< "$meta")"
+  meta="$(http_get "https://registry.npmjs.org/$package/$VERSION")"
+  http_get -o "$tgz" "$(jq -r .dist.tarball <<< "$meta")"
   integrity="$(jq -r .dist.integrity <<< "$meta")"
   if [ "sha512-$(openssl dgst -sha512 -binary "$tgz" | openssl base64 -A)" != "$integrity" ]; then
     echo "::error::$package@$VERSION does not match the integrity the registry lists."
@@ -45,16 +46,16 @@ fetch() {
   jq -r --arg keyid "$keyid" '.dist.signatures[]? | select(.keyid == $keyid) | .sig' <<< "$meta" \
     | openssl base64 -d -A > "$tgz.sig"
   if ! printf '%s' "$package@$VERSION:$integrity" \
-    | openssl dgst -sha256 -verify "$RUNNER_TEMP/npm-key.pem" -signature "$tgz.sig" > /dev/null 2>&1; then
+    | openssl dgst -sha256 -verify "$tmp/npm-key.pem" -signature "$tgz.sig" > /dev/null 2>&1; then
     echo "::error::$package@$VERSION does not carry npm's signature."
     exit 1
   fi
 }
 
-fetch "@pnpm/exe.$platform" "$RUNNER_TEMP/pnpm.tgz" &
+fetch "@pnpm/exe.$platform" "$tmp/pnpm.tgz" &
 binary=$!
 # Only the wrapper ships `dist/node-gyp-bin`, which pnpm puts on PATH for build scripts.
-fetch @pnpm/exe "$RUNNER_TEMP/pnpm-dist.tgz" &
+fetch @pnpm/exe "$tmp/pnpm-dist.tgz" &
 dist=$!
 wait "$binary"
 wait "$dist"
@@ -71,8 +72,8 @@ untar() {
   fi
   tar -xzf "$1" -C "$dir" --strip-components=1 "$2"
 }
-untar "$RUNNER_TEMP/pnpm.tgz" "package/pnpm$ext"
-untar "$RUNNER_TEMP/pnpm-dist.tgz" package/dist
+untar "$tmp/pnpm.tgz" "package/pnpm$ext"
+untar "$tmp/pnpm-dist.tgz" package/dist
 # Like pnpm's own install: the binary acts on the name it runs as.
 for name in pn pnpx pnx; do ln -f "$dir/pnpm$ext" "$dir/$name$ext"; done
 printf '%s\n' "$dir" "$dir/bin" >> "$GITHUB_PATH"

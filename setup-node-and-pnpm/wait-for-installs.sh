@@ -8,10 +8,12 @@ running() {
   pid="$(cat "$1/pid" 2> /dev/null)" || return 1
   if [ -r "/proc/$pid/cmdline" ]; then
     command="$(tr '\0' ' ' < "/proc/$pid/cmdline")"
-  else
-    command="$(ps -o command= -p "$pid" 2> /dev/null)" || return 1
+  elif ! command="$(ps -o command= -p "$pid" 2> /dev/null)"; then
+    # No command line to read: a live pid is the better guess, since a second install would race the first.
+    kill -0 "$pid" 2> /dev/null
+    return
   fi
-  [[ "$command" == *start-installs.sh* ]]
+  [[ "$command" == *background-install.sh* ]]
 }
 
 failed=0
