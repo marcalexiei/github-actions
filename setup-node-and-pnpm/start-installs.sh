@@ -4,6 +4,8 @@ set -euo pipefail
 
 for task in pnpm node; do
   out="$RUNNER_TEMP/install-$task"
+  # An earlier run of the action in this job left its status behind.
+  rm -rf "$out"
   mkdir -p "$out"
   : > "$out/path"
   : > "$out/env"
@@ -13,7 +15,9 @@ for task in pnpm node; do
     status=0
     GITHUB_PATH="$out/path" GITHUB_ENV="$out/env" GITHUB_OUTPUT="$out/output" \
       bash "$GITHUB_ACTION_PATH/install-$task.sh" > "$out/log" 2>&1 || status=$?
-    echo "$status" > "$out/status"
+    # Renamed into place: the waiting step reads it as soon as it exists.
+    echo "$status" > "$out/status.tmp"
+    mv "$out/status.tmp" "$out/status"
   ) > /dev/null 2>&1 &
   echo "$!" > "$out/pid"
 done

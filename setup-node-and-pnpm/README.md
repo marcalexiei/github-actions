@@ -23,7 +23,8 @@ pnpm version should be set in the `packageManager` field inside `package.json`.
 pnpm 12 or later, as an exact version, is required. Its native binary and bundled node-gyp are downloaded from the npm registry and checked against npm's signature.
 
 Node.js is downloaded from nodejs.org and checked against its `SHASUMS256.txt`, unless the runner image already ships that version.
-A major or minor (`24`, `24.20`) resolves to its latest release, as `actions/setup-node` resolves it; any other range is left to `actions/setup-node`.
+A major or minor (`24`, `24.20`) resolves to the latest release nodejs.org lists, which `actions/setup-node`'s own list can trail by hours; any other range is left to `actions/setup-node`.
+When nodejs.org cannot be reached, `actions/setup-node` installs Node.js instead, with a warning.
 Both download while `node_modules` restores.
 
 `node_modules` is cached.

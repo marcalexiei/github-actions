@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import type { ChildProcess } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
@@ -21,8 +22,11 @@ after(() => {
 const tasks = ['pnpm', 'node'] as const;
 type Task = (typeof tasks)[number];
 
-/** What a background install left behind, or `running`: a process that finishes it shortly. */
-type Finished = { status: number; log: string } | 'running' | 'gone';
+/**
+ * What a background install left behind; `running`: a process that finishes it shortly;
+ * `gone`: no process and no status; `reused`: its pid now another process's.
+ */
+type Finished = { status: number; log: string } | 'running' | 'gone' | 'reused';
 
 interface Result {
   status: number | null;
@@ -33,12 +37,18 @@ interface Result {
 }
 
 let run = 0;
+const others: Array<ChildProcess> = [];
+after(() => {
+  for (const other of others) {
+    other.kill();
+  }
+});
 
 /**
- * Lays out an action folder with stub installs, which write `<task>` lines to their step's files.
+ * Lays out an action folder with stub installs taking `seconds`, which write `<task>` lines to their step's files.
  * @returns the work folder and the action folder.
  */
-function setup(): { work: string; action: string } {
+function setup(seconds = 0): { work: string; action: string } {
   run += 1;
   const work = path.join(dir, `run-${run}`);
   const action = path.join(work, 'action');
@@ -52,6 +62,7 @@ function setup(): { work: string; action: string } {
     writeFileSync(
       stub,
       `#!/usr/bin/env bash
+sleep ${seconds}
 echo "installing ${task}"
 echo "/${task}" >> "$GITHUB_PATH"; echo "${task.toUpperCase()}=1" >> "$GITHUB_ENV"; echo "${task}=done" >> "$GITHUB_OUTPUT"
 `,
@@ -67,6 +78,8 @@ function runScript(work: string, action: string, script: string): Result {
   }
   const result = spawnSync('bash', [path.join(action, script)], {
     encoding: 'utf8',
+    // Waiting on the wrong process would otherwise pass, only slowly.
+    timeout: 10_000,
     env: {
       PATH: process.env['PATH'],
       RUNNER_TEMP: path.join(work, 'temp'),
@@ -97,9 +110,10 @@ function wait(finished: Record<Task, Finished>): Result {
     writeFileSync(path.join(out, 'output'), `${task}=bg\n`);
     const state = finished[task];
     if (state === 'running') {
+      // Named as start-installs.sh's own background process is.
       const child = spawn(
         'bash',
-        ['-c', `sleep 0.5; echo 'finished ${task}' > log; echo 0 > status`],
+        ['-c', `sleep 0.5; echo 'finished ${task}' > log; echo 0 > status`, 'start-installs.sh'],
         {
           cwd: out,
           detached: true,
@@ -108,9 +122,13 @@ function wait(finished: Record<Task, Finished>): Result {
       );
       child.unref();
       writeFileSync(path.join(out, 'pid'), String(child.pid));
+    } else if (state === 'reused') {
+      const other = spawn('sleep', ['60'], { stdio: 'ignore' });
+      others.push(other);
+      writeFileSync(path.join(out, 'pid'), String(other.pid));
     } else {
-      // A pid no process has: the background process is gone.
-      writeFileSync(path.join(out, 'pid'), '999999');
+      // The pid of a process that has exited.
+      writeFileSync(path.join(out, 'pid'), String(spawnSync('true').pid));
       if (state !== 'gone') {
         writeFileSync(path.join(out, 'log'), state.log);
         writeFileSync(path.join(out, 'status'), String(state.status));
@@ -159,6 +177,16 @@ test('installs in its own step when the background process is gone', () => {
   assert.equal(result.output, 'pnpm=bg\nnode=done\n');
 });
 
+test('installs in its own step when the pid now belongs to another process', () => {
+  const result = wait({ pnpm: 'reused', node: ok });
+  assert.equal(result.status, 0);
+  assert.match(
+    result.stdout,
+    /The pnpm install started by 'Resolve versions' did not finish; installing now\.\ninstalling pnpm/,
+  );
+  assert.equal(result.path, '/pnpm\n/bg-node\n');
+});
+
 test('start-installs.sh runs each install in the background, for wait-for-installs.sh to apply', () => {
   const { work, action } = setup();
   const started = runScript(work, action, 'start-installs.sh');
@@ -169,5 +197,19 @@ test('start-installs.sh runs each install in the background, for wait-for-instal
   assert.equal(result.stdout, 'installing pnpm\ninstalling node\n');
   assert.equal(result.path, '/pnpm\n/node\n');
   assert.equal(result.env, 'PNPM=1\nNODE=1\n');
+  assert.equal(result.output, 'pnpm=done\nnode=done\n');
+});
+
+test('start-installs.sh drops what an earlier run of the action left', () => {
+  // Still installing when the wait starts, so only a stale status could end it early.
+  const { work, action } = setup(0.5);
+  const stale = path.join(work, 'temp', 'install-pnpm');
+  mkdirSync(stale);
+  writeFileSync(path.join(stale, 'status'), '0');
+  writeFileSync(path.join(stale, 'log'), 'stale\n');
+  writeFileSync(path.join(stale, 'output'), 'pnpm=stale\n');
+  runScript(work, action, 'start-installs.sh');
+  const result = runScript(work, action, 'wait-for-installs.sh');
+  assert.equal(result.stdout, 'installing pnpm\ninstalling node\n');
   assert.equal(result.output, 'pnpm=done\nnode=done\n');
 });

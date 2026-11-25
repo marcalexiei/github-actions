@@ -29,11 +29,14 @@ keyid='SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U'
 key='MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY6Ya7W++7aUPzvMTrezH6Ycx3c+HOKYCcNGybJZSCJq/fd7Qa8uuAKtdIkUQtQiEKERhAmE5lMMJhP8OkDOa2g=='
 printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$key" > "$RUNNER_TEMP/npm-key.pem"
 
+# A stalled transfer aborts, which --retry retries, rather than hanging the job.
+curl_args=(-fsSL --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30)
+
 # Downloads $1@$VERSION to $2, checked against the integrity npm signed.
 fetch() {
   local package="$1" tgz="$2" meta integrity
-  meta="$(curl -fsSL --retry 3 "https://registry.npmjs.org/$package/$VERSION")"
-  curl -fsSL --retry 3 -o "$tgz" "$(jq -r .dist.tarball <<< "$meta")"
+  meta="$(curl "${curl_args[@]}" "https://registry.npmjs.org/$package/$VERSION")"
+  curl "${curl_args[@]}" -o "$tgz" "$(jq -r .dist.tarball <<< "$meta")"
   integrity="$(jq -r .dist.integrity <<< "$meta")"
   if [ "sha512-$(openssl dgst -sha512 -binary "$tgz" | openssl base64 -A)" != "$integrity" ]; then
     echo "::error::$package@$VERSION does not match the integrity the registry lists."

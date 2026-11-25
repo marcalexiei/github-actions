@@ -21,12 +21,13 @@ after(() => {
 
 const fakeBin = path.join(dir, 'bin');
 mkdirSync(fakeBin);
-// Serves $FAKE_INDEX, $FAKE_SUMS and $FAKE_ARCHIVE by URL, logging each; a missing file fails as a 404 would.
+// Serves $FAKE_INDEX, $FAKE_SUMS and $FAKE_ARCHIVE by URL, logging each; a URL ending in $FAKE_FAIL fails as a 404 would.
 writeFileSync(
   path.join(fakeBin, 'curl'),
   `#!/usr/bin/env bash
 url="\${*: -1}"
 echo "$url" >> "$CURL_LOG"
+[ -n "$FAKE_FAIL" ] && [[ "$url" == *"$FAKE_FAIL" ]] && exit 22
 prev=''; for arg in "$@"; do [ "$prev" = -o ] && out="$arg"; prev="$arg"; done
 case "$url" in
   */index.json) cat "$FAKE_INDEX" ;;
@@ -36,6 +37,20 @@ esac
 `,
 );
 chmodSync(path.join(fakeBin, 'curl'), 0o755);
+// Git Bash's path converter, for the Windows branch: these paths need none.
+writeFileSync(
+  path.join(fakeBin, 'cygpath'),
+  '#!/usr/bin/env bash\n[ "$1" = -w ] && shift\necho "$1"\n',
+);
+chmodSync(path.join(fakeBin, 'cygpath'), 0o755);
+// Windows' tar.exe, under $SYSTEMROOT: logs its arguments and leaves a node.exe where -C points.
+const systemRoot = path.join(dir, 'Windows');
+mkdirSync(path.join(systemRoot, 'System32'), { recursive: true });
+writeFileSync(
+  path.join(systemRoot, 'System32', 'tar.exe'),
+  '#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$TAR_LOG"\necho "not node" > "$4/node.exe"\n',
+);
+chmodSync(path.join(systemRoot, 'System32', 'tar.exe'), 0o755);
 
 const archive = path.join(dir, 'node.tar.gz');
 mkdirSync(path.join(dir, 'node-dist', 'bin'), { recursive: true });
@@ -53,6 +68,8 @@ interface Options {
   sums?: Array<string>;
   /** Versions whose marker is already in the tool cache. */
   installed?: Array<string>;
+  /** The end of a URL nodejs.org fails to serve. */
+  fail?: string;
 }
 
 interface Result {
@@ -63,6 +80,9 @@ interface Result {
   /** Every URL the script fetched, in order. */
   urls: Array<string>;
   toolCache: string;
+  temp: string;
+  /** The arguments Windows' tar.exe got, one per line. */
+  tar: string;
 }
 
 let run = 0;
@@ -94,6 +114,9 @@ function install(options: Options): Result {
       FAKE_INDEX: path.join(work, 'index.json'),
       FAKE_SUMS: path.join(work, 'SHASUMS256.txt'),
       FAKE_ARCHIVE: archive,
+      FAKE_FAIL: options.fail ?? '',
+      SYSTEMROOT: systemRoot,
+      TAR_LOG: path.join(work, 'tar.log'),
     },
   });
   const read = (file: string): string => {
@@ -106,6 +129,8 @@ function install(options: Options): Result {
     output: read('output'),
     urls: read('curl.log').trim().split('\n').filter(Boolean),
     toolCache,
+    temp: path.join(work, 'temp'),
+    tar: read('tar.log'),
   };
 }
 
@@ -174,3 +199,41 @@ test('rejects an archive SHASUMS256.txt does not list', () => {
   assert.match(result.stdout, /does not match the checksum/);
   assert.equal(existsSync(path.join(result.toolCache, 'node', '26.13.1', 'arm64.complete')), false);
 });
+
+test("unpacks the zip with Windows' own tar on Windows", () => {
+  const result = install({
+    spec: '26.13.1',
+    os: 'Windows',
+    arch: 'X64',
+    sums: [`${sha256}  node-v26.13.1-win-x64.zip`],
+  });
+  assert.equal(result.status, 0);
+  const installed = path.join(result.toolCache, 'node', '26.13.1', 'x64');
+  assert.deepEqual(result.tar.trim().split('\n'), [
+    '-xf',
+    path.join(result.temp, 'node-v26.13.1-win-x64.zip'),
+    '-C',
+    installed,
+    '--strip-components',
+    '1',
+  ]);
+  assert.equal(readFileSync(path.join(installed, 'node.exe'), 'utf8'), 'not node\n');
+  assert.ok(existsSync(`${installed}.complete`));
+});
+
+for (const [what, fail] of [
+  ['index.json', '/index.json'],
+  ['the archive', '.tar.gz'],
+  ['SHASUMS256.txt', '/SHASUMS256.txt'],
+] as const) {
+  test(`leaves the install to actions/setup-node when nodejs.org fails to serve ${what}`, () => {
+    const result = install({ spec: '26', fail });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /::warning::.*; actions\/setup-node installs Node\.js instead\./);
+    assert.equal(result.output, 'node-version=26\n');
+    assert.equal(
+      existsSync(path.join(result.toolCache, 'node', '26.13.1', 'arm64.complete')),
+      false,
+    );
+  });
+}
