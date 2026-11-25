@@ -115,6 +115,13 @@ test('rejects pnpm older than 12 before downloading', () => {
   assert.deepEqual(result.urls, []);
 });
 
+test('rejects a version with more after it before downloading', () => {
+  const result = install({ version: '12.21.0\nPATH=/tmp' });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /An exact pnpm version, 12 or later, is required/);
+  assert.deepEqual(result.urls, []);
+});
+
 test('rejects a version that is not a number before downloading', () => {
   const result = install({ version: 'next' });
   assert.equal(result.status, 1);
@@ -129,14 +136,16 @@ test('rejects a platform pnpm ships no binary for', () => {
 });
 
 test('picks the musl binary when ldd is musl', () => {
-  assert.deepEqual(install({ libc: 'musl' }).urls, [
+  assert.deepEqual(install({ libc: 'musl' }).urls.toSorted(), [
     'https://registry.npmjs.org/@pnpm/exe.linux-x64-musl/12.21.0',
+    'https://registry.npmjs.org/@pnpm/exe/12.21.0',
   ]);
 });
 
 test('picks the glibc binary when ldd is glibc', () => {
-  assert.deepEqual(install({ libc: 'glibc' }).urls, [
+  assert.deepEqual(install({ libc: 'glibc' }).urls.toSorted(), [
     'https://registry.npmjs.org/@pnpm/exe.linux-x64/12.21.0',
+    'https://registry.npmjs.org/@pnpm/exe/12.21.0',
   ]);
 });
 

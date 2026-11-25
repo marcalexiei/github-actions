@@ -58,6 +58,15 @@ runs:
           [ -z "$paths" ] || printf 'deps-paths<<EOF\n%s\nEOF\n' "$paths"
         } >> "$GITHUB_OUTPUT"
 
+        # In the background, while the cache restores: `Install pnpm` waits for it, and applies its PATH and env.
+        (
+          status=0
+          VERSION="${pnpm#pnpm@}" GITHUB_PATH="$RUNNER_TEMP/pnpm.path" GITHUB_ENV="$RUNNER_TEMP/pnpm.env" \
+            bash "$GITHUB_ACTION_PATH/install-pnpm.sh" > "$RUNNER_TEMP/pnpm.log" 2>&1 || status=$?
+          echo "$status" > "$RUNNER_TEMP/pnpm.status"
+        ) > /dev/null 2>&1 &
+        echo "$!" > "$RUNNER_TEMP/pnpm.pid"
+
     # A hit skips `pnpm install`.
     # After a lockfile change, `pnpm install` only fetches what the older node_modules lacks.
     - name: Restore Node.js and node_modules
@@ -69,19 +78,19 @@ runs:
         key: ${{ steps.versions.outputs.deps-key }}
         restore-keys: ${{ steps.versions.outputs.deps-restore-key }}
 
-    # Not pnpm/setup: it saves a cache in every job, which parallel jobs race for.
-    - name: Install pnpm
-      shell: bash
-      env:
-        VERSION: ${{ steps.versions.outputs.pnpm-version }}
-      run: bash "$GITHUB_ACTION_PATH/install-pnpm.sh"
-
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: ${{ steps.versions.outputs.node }}
         package-manager-cache: false
         registry-url: 'https://registry.npmjs.org'
+
+    # Not pnpm/setup: it saves a cache in every job, which parallel jobs race for.
+    - name: Install pnpm
+      shell: bash
+      env:
+        VERSION: ${{ steps.versions.outputs.pnpm-version }}
+      run: bash "$GITHUB_ACTION_PATH/wait-for-pnpm.sh"
 
     - name: Install Dependencies
       if: ${{ runner.os == 'Windows' || steps.deps.outputs.cache-hit != 'true' }}

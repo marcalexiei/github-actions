@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # The regex first: `-lt` on a non-number errors, which `if` reads as false.
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || [ "${VERSION%%.*}" -lt 12 ]; then
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || [ "${VERSION%%.*}" -lt 12 ]; then
   echo "::error::An exact pnpm version, 12 or later, is required (got: $VERSION)."
   exit 1
 fi
@@ -48,9 +48,13 @@ fetch() {
   fi
 }
 
-fetch "@pnpm/exe.$platform" "$RUNNER_TEMP/pnpm.tgz"
+fetch "@pnpm/exe.$platform" "$RUNNER_TEMP/pnpm.tgz" &
+binary=$!
 # Only the wrapper ships `dist/node-gyp-bin`, which pnpm puts on PATH for build scripts.
-fetch @pnpm/exe "$RUNNER_TEMP/pnpm-dist.tgz"
+fetch @pnpm/exe "$RUNNER_TEMP/pnpm-dist.tgz" &
+dist=$!
+wait "$binary"
+wait "$dist"
 
 # node_modules records its store, under PNPM_HOME: moving it needs a new deps key in action.yml.
 dir="$RUNNER_TOOL_CACHE/pnpm/$VERSION/$platform"
